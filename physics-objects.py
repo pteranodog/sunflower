@@ -34,8 +34,11 @@ class Vector:
         self.x //= scalar
         self.y //= scalar
 
+    def angle_to(self, vector):
+        pass
+
     def dot(self, vector):
-        pass # TODO
+        return self.x * vector.x + self.y * vector.y
 
     def normalize(self):
         self.div(self.magnitude)
@@ -44,8 +47,10 @@ class Vector:
         self.normalize()
         self.mult(length)
 
-    def rotate(self):
-        pass
+    def rotate(self, angle):
+        x, y = self.x, self.y
+        self.x = x * math.cos(angle) - y * math.sin(angle)
+        self.y = y * math.cos(angle) + x * math.sin(angle)
 
     @staticmethod
     def add_(vector1, vector2):
@@ -67,25 +72,32 @@ class Vector:
     def floordiv_(vector, scalar):
         return Vector(vector.x // scalar, vector.y // scalar)
 
+    @staticmethod
+    def dot_(vector1, vector2):
+        return vector1.x * vector2.x + vector1.y * vector2.y
+
     def __add__(self, vector):
-        return Vector.add2(self, vector)
+        return Vector.add_(self, vector)
 
     def __sub__(self, vector):
-        return Vector.sub2(self, vector)
+        return Vector.sub_(self, vector)
 
-    def __mult__(self, scalar: float):
-        return Vector.mult2(self, scalar)
-
+    def __mult__(self, vector_or_scalar):
+        if vector_or_scalar is float or vector_or_scalar is int:
+            return Vector.mult_(self, vector_or_scalar)
+        if vector_or_scalar is Vector:
+            return Vector.dot_(self, vector_or_scalar)
+    
     def __truediv__(self, scalar):
-        return Vector(self.x / scalar, self.y / scalar)
+        return Vector.div_(self, scalar)
     
     def __floordiv__(self, scalar):
-        return Vector(self.x // scalar, self.y // scalar)
+        return Vector.floordiv_(self, scalar)
     
     def __str__(self) -> str:
         return f"({self.x},{self.y})"
     
-
+    
 class Object:
     def __init__(self, mass: float, moment_of_inertia: float, position: Vector, velocity: Vector, heading: float, rotation: float, attachments = []) -> None:
         self.mass = mass
@@ -114,8 +126,11 @@ class Object:
     def attach(self, attachment) -> None:
         attachment.fixed = True
         attachment.parent = self
-        self.attached.append(attachment)
+        self.children.append(attachment)
     
+    def apply_force(self, force):
+        pass
+
     def update(self):
         if not self.fixed:
             self.pos.add(Vector.mult2(self.vel, self.elapsed()))
