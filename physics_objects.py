@@ -75,6 +75,12 @@ class Vector:
     @staticmethod
     def dot_(vector1, vector2):
         return vector1.x * vector2.x + vector1.y * vector2.y
+    
+    @staticmethod
+    def rotate_(vector, angle):
+        x = vector.x * math.cos(angle) - vector.y * math.sin(angle)
+        y = vector.y * math.cos(angle) + vector.x * math.sin(angle)
+        return Vector(x,y)
 
     def __add__(self, vector):
         return Vector.add_(self, vector)
@@ -99,7 +105,7 @@ class Vector:
     
     
 class Object:
-    def __init__(self, mass: float, moment_of_inertia: float, position: Vector, velocity: Vector, heading: float, rotation: float, attachments = []) -> None:
+    def __init__(self, mass: float, moment_of_inertia: float, position: Vector, velocity: Vector, heading: float, rotation: float, attachments = [], fixed_position = False, fixed_rotation = False) -> None:
         self.mass = mass
         self.moment = moment_of_inertia
         self.pos = position
@@ -108,14 +114,15 @@ class Object:
         self.rot = rotation
         self.children = []
         self.parent = None
-        self.fixed = False
+        self.fixed_position = fixed_position
+        self.fixed_rotation = fixed_rotation
         self.time_since_reset = time.time_ns()
 
     @property
     def abs_pos(self):
         if self.parent == None:
             return self.pos
-        return self.parent.pos + self.pos
+        return self.parent.pos + Vector.rotate_(self.pos,self.parent.rot)
 
     def elapsed(self):
         return (time.time_ns() - self.last_updated) / 1e9
@@ -123,8 +130,9 @@ class Object:
     def reset_elapsed(self):
         self.last_updated = time.time_ns()
 
-    def attach(self, attachment) -> None:
-        attachment.fixed = True
+    def attach(self, attachment, swivel = False) -> None:
+        attachment.fixed_center = True
+        attachment.fixed_rotation = not swivel
         attachment.parent = self
         self.children.append(attachment)
     

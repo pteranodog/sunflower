@@ -2,6 +2,7 @@ import sys
 import pygame
 from pygame.locals import *
 from math import sin, cos, radians, degrees, pi, atan2
+import physics_objects
 
 fps = 60
 
