@@ -35,7 +35,7 @@ class Vector:
         self.y //= scalar
 
     def angle_to(self, vector):
-        pass
+        pass # TODO
 
     def dot(self, vector):
         return self.x * vector.x + self.y * vector.y
@@ -105,13 +105,15 @@ class Vector:
     
     
 class Object:
-    def __init__(self, mass: float, moment_of_inertia: float, position: Vector, velocity: Vector, heading: float, rotation: float, attachments = [], fixed_position = False, fixed_rotation = False) -> None:
+    def __init__(self, mass: float, moment_of_inertia: float, position: Vector, velocity: Vector, heading: float, rotation: float, fixed_position = False, fixed_rotation = False) -> None:
         self.mass = mass
         self.moment = moment_of_inertia
         self.pos = position
         self.vel = velocity
         self.heading = heading
         self.rot = rotation
+        self.forces = []
+        self.rotational_forces = []
         self.children = []
         self.parent = None
         self.fixed_position = fixed_position
@@ -136,10 +138,34 @@ class Object:
         attachment.parent = self
         self.children.append(attachment)
     
-    def apply_force(self, force):
-        pass
+    def add_force(self, force: Vector):
+        self.forces.append(force)
+
+    def apply_forces(self):
+        time_elapsed = self.elapsed()
+        for force in self.forces:
+            self.vel.add(Vector.div_(force,time_elapsed) / self.mass)
+        for force in self.rotational_forces:
+            self.rot += force / (self.moment * time_elapsed)
+        self.forces.clear()
+
+    def apply_forces_to_parent(self):
+        pass # TODO
 
     def update(self):
+        for child in self.children:
+            child.update()
+            child.apply_forces_to_parent()
+        self.apply_forces()
+        if not self.fixed_rotation:
+            self.heading += self.rot
         if not self.fixed:
             self.pos.add(Vector.mult2(self.vel, self.elapsed()))
         self.reset_elapsed()
+''' TEST CODE
+sunflower = Object(1.21, .0333, Vector(0,0), Vector(0,0), 0, 0, fixed_position=True)
+thruster1 = Object(.02,.02,Vector(-.5,0),Vector(0,0),0,0)
+thruster2 = Object(.02,.02,Vector(.5,0),Vector(0,0),math.pi,0)
+sunflower.attach(thruster1)
+sunflower.attach(thruster2)
+'''
