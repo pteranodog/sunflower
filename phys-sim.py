@@ -171,7 +171,7 @@ def drawRCS():
         point[1] += center_y
     pygame.draw.lines(screen, WHITE if not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT] else RED, True, rect, line_width)
 
-    if rcs_direction != 0 and not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT]:
+    if rcs_direction != 0 and not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT] and not cutoff_solenoid == 1:
         if rcs_direction > 0:
             triangle_one = [
                 [radius * radius_draw_mult, -rect_width / 2],
