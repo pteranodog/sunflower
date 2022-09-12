@@ -18,6 +18,8 @@ cycles_in_current_state = 0
 current_state = 0
 recent_cycles = [0 for x in range(int(fps/3))]
 output_control = 0
+cutoff_solenoid = 0
+cutoff_cycle_count = 0
 
 
 altitude = 30 #kilometers
@@ -41,8 +43,12 @@ proportional = .2
 integral = .1
 derivative = -.7
 setpoint = 0
-deadzone = .2
-deadspeed = .2
+seek_deadzone = .06
+stable_deadzone = .4
+deadzone = seek_deadzone
+seek_deadspeed = .001
+stable_deadspeed = 1
+deadspeed = stable_deadspeed
 
 rcs_direction = 0
 
@@ -69,35 +75,56 @@ control_force_indicator_multiplier = width
 
 
 def PID_control(pos, vel, target):
-    global control_force_indicator
+    global control_force_indicator, deadzone, deadspeed
     integral_positions.pop(0)
     integral_positions.append(target - pos)
-    if abs(vel) < deadspeed and abs(target - pos) < deadzone:
+    if abs(vel) <= deadspeed and abs(target - pos) <= deadzone:
+        if deadzone == seek_deadzone:
+            deadzone = stable_deadzone
+            deadspeed = stable_deadspeed
         desired_force = 0
     else:
+        if deadzone == stable_deadzone:
+            deadzone = seek_deadzone
+            deadspeed = seek_deadspeed
         desired_force = (target - pos) * proportional + (vel) * derivative + (sum(integral_positions)) * integral
     control_force_indicator = desired_force
     return desired_force
 
 def PWM_control(rcs_force, desired_force):
-    global output_control, cycles_in_current_state
-    max_force = .2
+    global output_control, cycles_in_current_state, cutoff_solenoid, cutoff_cycle_count
+    max_force = .1
     min_force = .05
-    if cycles_in_current_state < fps/max_frequency:
-        cycles_in_current_state += 1
-    elif output_control == 0:
+    cutoff_cycle_count += 1
+    if cutoff_solenoid == 1 and cutoff_cycle_count >= fps/max_frequency:
+        cutoff_solenoid = 0
+        cutoff_cycle_count = 0
+
+    if output_control == 0:
         if desired_force > max_force:
             output_control = 1
             cycles_in_current_state = 0
         elif desired_force < -max_force:
             output_control = -1
             cycles_in_current_state = 0
+
     elif output_control == 1:
-        if desired_force < min_force:
+        if cycles_in_current_state < fps/max_frequency:
+            cycles_in_current_state += 1
+            if desired_force < min_force and cutoff_cycle_count >= fps/max_frequency:
+                cutoff_solenoid = 1
+                cutoff_cycle_count = 0
+        elif desired_force < min_force:
             output_control = 0
             cycles_in_current_state = 0
+
     elif output_control == -1:
-        if desired_force > -min_force:
+        if cycles_in_current_state < fps/max_frequency:
+            cycles_in_current_state += 1
+            if desired_force > -min_force and cutoff_cycle_count >= fps/max_frequency:
+                cutoff_solenoid = 1
+                cutoff_cycle_count = 0
+        elif desired_force > -min_force:
             output_control = 0
             cycles_in_current_state = 0
     return 0 if pygame.key.get_pressed()[pygame.K_LEFT] and pygame.key.get_pressed()[pygame.K_RIGHT] else -1 if pygame.key.get_pressed()[pygame.K_LEFT] else 1 if pygame.key.get_pressed()[pygame.K_RIGHT] else output_control
@@ -114,11 +141,11 @@ def updateRCS():
 
     rcs_direction = 0
     rcs_force = (pressure * nozzle_area) - (altitude_pressure * nozzle_area)
-    applied_force = 0;
+    applied_force = 0
 
     desired_force = PID_control(position, velocity, setpoint)
     rcs_direction = PWM_control(rcs_force, desired_force)
-    applied_force = rcs_force * rcs_direction
+    applied_force = rcs_force * (0 if cutoff_solenoid == 1 else rcs_direction)
     
     accel = (applied_force * radius / rotational_inertia)
     velocity += accel / fps
@@ -145,7 +172,7 @@ def drawRCS():
         point[1] += center_y
     pygame.draw.lines(screen, WHITE if not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT] else RED, True, rect, line_width)
 
-    if rcs_direction != 0 and not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT]:
+    if rcs_direction != 0 and not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT] and not cutoff_solenoid == 1:
         if rcs_direction > 0:
             triangle_one = [
                 [radius * radius_draw_mult, -rect_width / 2],
@@ -185,8 +212,8 @@ def drawRCS():
             point[1] += center_y
         pygame.draw.lines(screen, WHITE, True, triangle_one, line_width)
         pygame.draw.lines(screen, WHITE, True, triangle_two, line_width)
-    # if control_force_indicator != 0:
-    #     pygame.draw.line(screen, WHITE, (center_x, height / 12), (center_x + control_force_indicator * control_force_indicator_multiplier, height / 12))
+    if control_force_indicator != 0:
+        pygame.draw.line(screen, WHITE if cutoff_solenoid == 0 else RED, (center_x, height / 12), (center_x + control_force_indicator * control_force_indicator_multiplier, height / 12))
     if not pygame.key.get_pressed()[pygame.K_LEFT] and not pygame.key.get_pressed()[pygame.K_RIGHT]:
         pygame.draw.line(screen, YELLOW,
             (100 * cos(position - pi / 2) + center_x, 100 * sin(position - pi / 2) + center_y),
