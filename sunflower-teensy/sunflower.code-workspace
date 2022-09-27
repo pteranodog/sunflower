@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "sunflower-teensy",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
