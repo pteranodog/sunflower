@@ -72,6 +72,14 @@ void setup() {
   imu.begin_I2C();
   barometer.begin_I2C();
 
+  // Enable IMU Reports
+  imu.enableReport(SH2_ACCELEROMETER);
+  imu.enableReport(SH2_GYROSCOPE_CALIBRATED);
+  imu.enableReport(SH2_GEOMAGNETIC_ROTATION_VECTOR);
+  imu.enableReport(SH2_LINEAR_ACCELERATION);
+  imu.enableReport(SH2_ROTATION_VECTOR);
+
+
   // Start serial output
   Serial.begin(115200);
 
