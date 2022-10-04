@@ -46,12 +46,50 @@ const int I2C_SCL = 19;
 unsigned int packets = 0;
 unsigned int millisAtStart = 0;
 
+struct {
+  bool accel;
+  bool gyro;
+  bool mag;
+  bool linAccel;
+  bool rotVec;
+} updated;
+struct {
+  float x;
+  float y;
+  float z;
+} accel;
+struct {
+  float x;
+  float y;
+  float z;
+} gyro;
+struct {
+  float x;
+  float y;
+  float z;
+} mag;
+struct {
+  float x;
+  float y;
+  float z;
+} linAccel;
+struct {
+  float i;
+  float j;
+  float k;
+  float real;
+} rotVec;
+double temp = 0;
+double pressure = 0;
+double altitude = 0;
+
+
 // ------ SENSOR SETUP ------
 // IMU sensor setup
 Adafruit_BNO08x imu = Adafruit_BNO08x();
 sh2_SensorValue_t imuData;
 // Barometer sensor setup
-Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
+// Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 // --------------------------
 
 
@@ -61,6 +99,7 @@ FlightState updateState(FlightState state);
 void stabilize();
 void blinkLED(int LEDPin);
 void writeTelemetry();
+void parseIMUData();
 // --------------------------
 
 
@@ -72,24 +111,24 @@ void setup() {
   // Start I2C
   Wire.begin();
   imu.begin_I2C();
-  barometer.begin_I2C();
+  // barometer.begin_I2C();
 
   // Enable IMU Reports
-  imu.enableReport(SH2_ACCELEROMETER);
-  imu.enableReport(SH2_GYROSCOPE_CALIBRATED);
-  imu.enableReport(SH2_GEOMAGNETIC_ROTATION_VECTOR);
-  imu.enableReport(SH2_LINEAR_ACCELERATION);
-  imu.enableReport(SH2_ROTATION_VECTOR);
+  imu.enableReport(SH2_ACCELEROMETER, 50000);
+  imu.enableReport(SH2_GYROSCOPE_CALIBRATED, 50000);
+  imu.enableReport(SH2_MAGNETIC_FIELD_CALIBRATED, 50000);
+  imu.enableReport(SH2_LINEAR_ACCELERATION, 50000);
+  imu.enableReport(SH2_ROTATION_VECTOR, 50000);
 
 
   // Start serial output
   Serial.begin(115200);
 
   // I don't know what this does but it was in the example
-  barometer.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
-  barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
-  barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-  barometer.setOutputDataRate(BMP3_ODR_50_HZ);
+  // barometer.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  // barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+  // barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+  // barometer.setOutputDataRate(BMP3_ODR_50_HZ);
 }
 // --------------------------
 
@@ -100,7 +139,7 @@ void loop() {
   getSensorData();
   blinkLED(BOARD_LED);
   writeTelemetry();
-  delay(50 - (millis() - millisAtStart));
+  // delay(50 - (millis() - millisAtStart));
 }
 // --------------------------
 
@@ -108,9 +147,53 @@ void loop() {
 // -- FUNCTION DEFINITIONS --
 void getSensorData() {
   // Get sensor data
-  imu.getSensorEvent(&imuData);
-  barometer.performReading();
+  parseIMUData();
+  // barometer.performReading();
   // Put sensor data into variables
+}
+
+void parseIMUData() {
+  updated.accel = false;
+  updated.gyro = false;
+  updated.mag = false;
+  updated.linAccel = false;
+  updated.rotVec = false;
+  while ((!updated.accel) || (!updated.gyro) || (!updated.mag) || (!updated.linAccel) || (!updated.rotVec)) {
+    imu.getSensorEvent(&imuData);
+    switch (imuData.sensorId) {
+      case SH2_ACCELEROMETER:
+        accel.x = imuData.un.accelerometer.x;
+        accel.y = imuData.un.accelerometer.y;
+        accel.z = imuData.un.accelerometer.z;
+        updated.accel = true;
+        break;
+      case SH2_GYROSCOPE_CALIBRATED:
+        gyro.x = imuData.un.gyroscope.x;
+        gyro.y = imuData.un.gyroscope.y;
+        gyro.z = imuData.un.gyroscope.z;
+        updated.gyro = true;
+        break;
+      case SH2_MAGNETIC_FIELD_CALIBRATED:
+        mag.x = imuData.un.magneticField.x;
+        mag.y = imuData.un.magneticField.y;
+        mag.z = imuData.un.magneticField.z;
+        updated.mag = true;
+        break;
+      case SH2_LINEAR_ACCELERATION:
+        linAccel.x = imuData.un.linearAcceleration.x;
+        linAccel.y = imuData.un.linearAcceleration.y;
+        linAccel.z = imuData.un.linearAcceleration.z;
+        updated.linAccel = true;
+        break;
+      case SH2_ROTATION_VECTOR:
+        rotVec.i = imuData.un.rotationVector.i;
+        rotVec.j = imuData.un.rotationVector.j;
+        rotVec.k = imuData.un.rotationVector.k;
+        rotVec.real = imuData.un.rotationVector.real;
+        updated.rotVec = true;
+        break;
+    }
+  }
 }
 
 FlightState updateState() {
@@ -147,41 +230,41 @@ void writeTelemetry() {
   Serial.print(",");
   // cam state?
   Serial.print(",");
-  Serial.print(barometer.readAltitude(1013.25));
+  // Serial.print(barometer.readAltitude(1013.25));
   Serial.print(",");
-  Serial.print(barometer.temperature);
+  // Serial.print(barometer.temperature);
   Serial.print(",");
-  Serial.print(imuData.un.accelerometer.x);
+  Serial.print(accel.x);
   Serial.print(",");
-  Serial.print(imuData.un.accelerometer.y);
+  Serial.print(accel.y);
   Serial.print(",");
-  Serial.print(imuData.un.accelerometer.z);
+  Serial.print(accel.z);
   Serial.print(",");
-  Serial.print(imuData.un.gyroscope.x);
+  Serial.print(gyro.x);
   Serial.print(",");
-  Serial.print(imuData.un.gyroscope.y);
+  Serial.print(gyro.y);
   Serial.print(",");
-  Serial.print(imuData.un.gyroscope.z);
+  Serial.print(gyro.z);
   Serial.print(",");
-  Serial.print(imuData.un.magneticField.x);
+  Serial.print(mag.x);
   Serial.print(",");
-  Serial.print(imuData.un.magneticField.y);
+  Serial.print(mag.y);
   Serial.print(",");
-  Serial.print(imuData.un.magneticField.z);
+  Serial.print(mag.z);
   Serial.print(",");
-  Serial.print(imuData.un.linearAcceleration.x);
+  Serial.print(linAccel.x);
   Serial.print(",");
-  Serial.print(imuData.un.linearAcceleration.y);
+  Serial.print(linAccel.y);
   Serial.print(",");
-  Serial.print(imuData.un.linearAcceleration.z);
+  Serial.print(linAccel.z);
   Serial.print(",");
-  Serial.print(imuData.un.geoMagRotationVector.i);
+  Serial.print(rotVec.i);
   Serial.print(",");
-  Serial.print(imuData.un.geoMagRotationVector.j);
+  Serial.print(rotVec.j);
   Serial.print(",");
-  Serial.print(imuData.un.geoMagRotationVector.k);
+  Serial.print(rotVec.k);
   Serial.print(",");
-  Serial.print(imuData.un.geoMagRotationVector.real);
+  Serial.print(rotVec.real);
   Serial.print(",");
   // SPS row
   Serial.print(",");
@@ -195,7 +278,7 @@ void writeTelemetry() {
   Serial.print(",");
   // Sun angle
   Serial.print(",");
-  Serial.print(barometer.pressure);
+  // Serial.print(barometer.pressure);
   Serial.print(",");
   // board temp
   Serial.print(",");
