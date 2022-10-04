@@ -43,6 +43,8 @@ const int I2C_SDA = 18;
 const int I2C_SCL = 19;
 // --------------------------
 
+unsigned int packets = 0;
+unsigned int millisAtStart = 0;
 
 // ------ SENSOR SETUP ------
 // IMU sensor setup
@@ -57,7 +59,7 @@ Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 void getSensorData();
 FlightState updateState(FlightState state);
 void stabilize();
-void blinkLED();
+void blinkLED(int LEDPin);
 void writeTelemetry();
 // --------------------------
 
@@ -94,28 +96,11 @@ void setup() {
 
 // --- MAIN LOOP FUNCTION ---
 void loop() {
-  digitalWrite(BOARD_LED, HIGH);
-  delay(50);
-  digitalWrite(BOARD_LED, LOW);
-  delay(50);
-
-  // IMU Test
-  Serial.print("IMU: ");
-  imu.getSensorEvent(&imuData);
-  Serial.print(imuData.un.accelerometer.x);
-  Serial.print(" ");
-  Serial.print(imuData.un.accelerometer.y);
-  Serial.print(" ");
-  Serial.println(imuData.un.accelerometer.z);
-
-  // Barometer Test
-  Serial.print("Barometer: ");
-  barometer.performReading();
-  Serial.print(barometer.temperature);
-  Serial.print(" ");
-  Serial.print(barometer.pressure);
-  Serial.print(" ");
-  Serial.println(barometer.readAltitude(1013.25));
+  millisAtStart = millis();
+  getSensorData();
+  blinkLED(BOARD_LED);
+  writeTelemetry();
+  delay(50 - (millis() - millisAtStart));
 }
 // --------------------------
 
@@ -138,11 +123,95 @@ void stabilize() {
   // Stabilize
 }
 
-void blinkLED() {
-  // Blink the LED
+void blinkLED(int LEDPin) {
+  static int cyclesSinceLastBlink = 0;
+  if (cyclesSinceLastBlink >= 20) {
+    digitalWrite(LEDPin, HIGH);
+    cyclesSinceLastBlink = 0;
+  }
+  else {
+    if (cyclesSinceLastBlink == 0) {
+      digitalWrite(LEDPin, LOW);
+    }
+    cyclesSinceLastBlink++;
+  }
 }
 
 void writeTelemetry() {
-  // Write telemetry data
+  Serial.print("RCS1,");
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(packets++);
+  Serial.print(",");
+  Serial.print(currentState);
+  Serial.print(",");
+  // cam state?
+  Serial.print(",");
+  Serial.print(barometer.readAltitude(1013.25));
+  Serial.print(",");
+  Serial.print(barometer.temperature);
+  Serial.print(",");
+  Serial.print(imuData.un.accelerometer.x);
+  Serial.print(",");
+  Serial.print(imuData.un.accelerometer.y);
+  Serial.print(",");
+  Serial.print(imuData.un.accelerometer.z);
+  Serial.print(",");
+  Serial.print(imuData.un.gyroscope.x);
+  Serial.print(",");
+  Serial.print(imuData.un.gyroscope.y);
+  Serial.print(",");
+  Serial.print(imuData.un.gyroscope.z);
+  Serial.print(",");
+  Serial.print(imuData.un.magneticField.x);
+  Serial.print(",");
+  Serial.print(imuData.un.magneticField.y);
+  Serial.print(",");
+  Serial.print(imuData.un.magneticField.z);
+  Serial.print(",");
+  Serial.print(imuData.un.linearAcceleration.x);
+  Serial.print(",");
+  Serial.print(imuData.un.linearAcceleration.y);
+  Serial.print(",");
+  Serial.print(imuData.un.linearAcceleration.z);
+  Serial.print(",");
+  Serial.print(imuData.un.geoMagRotationVector.i);
+  Serial.print(",");
+  Serial.print(imuData.un.geoMagRotationVector.j);
+  Serial.print(",");
+  Serial.print(imuData.un.geoMagRotationVector.k);
+  Serial.print(",");
+  Serial.print(imuData.un.geoMagRotationVector.real);
+  Serial.print(",");
+  // SPS row
+  Serial.print(",");
+  // SPS a
+  Serial.print(",");
+  // SPS b
+  Serial.print(",");
+  // SPS c
+  Serial.print(",");
+  // SPS d
+  Serial.print(",");
+  // Sun angle
+  Serial.print(",");
+  Serial.print(barometer.pressure);
+  Serial.print(",");
+  // board temp
+  Serial.print(",");
+  // PID out
+  Serial.print(",");
+  // deadzone
+  Serial.print(",");
+  // deadspeed
+  Serial.print(",");
+  // control out cw
+  Serial.print(",");
+  // control out ccw
+  Serial.print(",");
+  // calculated thrust
+  Serial.print(",");
+  // solenoid on time
+  Serial.println("");  
 }
 // --------------------------
