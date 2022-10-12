@@ -13,6 +13,12 @@ enum FlightState {LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
 FlightState currentState = LAUNCH;
 // --------------------------
 
+// PID Constants
+const float Kp = 0.1;
+const float Ki = 0.1;
+const float Kd = 0.1;
+float deadzone = 0.1;
+float deadspeed = 0.1;
 
 // ---- PIN NUMBER SETUP ----
 // Serial pin
@@ -66,6 +72,10 @@ struct {
   float j;
   float k;
   float real;
+  float x;
+  float y;
+  float z;
+  float relativeSunAngle;
 } rotVec;
 double temp = 0;
 double pressure = 0;
@@ -92,13 +102,15 @@ Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 
 // -- FUNCTION DECLARATION --
 void getSensorData();
-FlightState updateState(FlightState state);
+FlightState updateState();
 void stabilize();
 void blinkLED(int LEDPin);
 void writeTelemetry();
 void parseIMUData();
 void updateSPS();
 float calculateSunAngle();
+void quaternionToEuler();
+void applyControl();
 // --------------------------
 
 
@@ -148,12 +160,14 @@ void loop() {
 }
 // --------------------------
 
-
 // -- FUNCTION DEFINITIONS --
 void getSensorData() {
   // Get sensor data
   parseIMUData();
   barometer.performReading();
+  temp = barometer.temperature;
+  pressure = barometer.pressure;
+  altitude = barometer.readAltitude(1013.25);
   updateSPS();
   sunAngle = calculateSunAngle();
 }
@@ -189,6 +203,17 @@ void parseIMUData() {
   }
 }
 
+void quaternionToEuler() {
+    float sqr = sq(rotVec.real);
+    float sqi = sq(rotVec.i);
+    float sqj = sq(rotVec.j);
+    float sqk = sq(rotVec.k);
+
+    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), (sqi - sqj - sqk + sqr));
+    rotVec.y = asin(-2.0 * (rotVec.i * rotVec.k - rotVec.k * rotVec.real) / (sqi + sqj + sqk + sqr));
+    rotVec.z = atan2(2.0 * (rotVec.j * rotVec.k + rotVec.i * rotVec.real), (-sqi - sqj + sqk + sqr));
+}
+
 FlightState updateState() {
   FlightState state = currentState;
   // Update the flight state
@@ -196,7 +221,7 @@ FlightState updateState() {
 }
 
 void stabilize() {
-  // Stabilize
+ // Stabilize
 }
 
 void blinkLED(int LEDPin) {
@@ -210,50 +235,50 @@ void blinkLED(int LEDPin) {
 }
 
 void writeTelemetry() {
-  Serial.print("RCS1,");
-  Serial.print(millis());
-  Serial.print(",");
-  Serial.print(packets++);
-  Serial.print(",");
-  Serial.print(currentState);
-  Serial.print(",");
-  Serial.print("OFF"); // cam state?
-  Serial.print(",");
-  Serial.print(barometer.readAltitude(1013.25));
-  Serial.print(",");
-  Serial.print(barometer.temperature);
-  Serial.print(",");
-  Serial.print(accel.x);
-  Serial.print(",");
-  Serial.print(accel.y);
-  Serial.print(",");
-  Serial.print(accel.z);
-  Serial.print(",");
-  Serial.print(gyro.x);
-  Serial.print(",");
-  Serial.print(gyro.y);
-  Serial.print(",");
-  Serial.print(gyro.z);
-  Serial.print(",");
-  Serial.print(rotVec.i);
-  Serial.print(",");
-  Serial.print(rotVec.j);
-  Serial.print(",");
-  Serial.print(rotVec.k);
-  Serial.print(",");
-  Serial.print(rotVec.real);
-  Serial.print(",");
-  Serial.print(SPSRow);
-  Serial.print(",");
-  Serial.print(SPS.front.array[SPSRow]);
-  Serial.print(",");
-  Serial.print(SPS.left.array[SPSRow]);
-  Serial.print(",");
-  Serial.print(SPS.right.array[SPSRow]);
-  Serial.print(",");
+  Serial1.print("RCS1,");
+  Serial1.print(millis());
+  Serial1.print(",");
+  Serial1.print(packets++);
+  Serial1.print(",");
+  Serial1.print(currentState);
+  Serial1.print(",");
+  Serial1.print("OFF"); // cam state?
+  Serial1.print(",");
+  Serial1.print(altitude);
+  Serial1.print(",");
+  Serial1.print(temp);
+  Serial1.print(",");
+  Serial1.print(accel.x);
+  Serial1.print(",");
+  Serial1.print(accel.y);
+  Serial1.print(",");
+  Serial1.print(accel.z);
+  Serial1.print(",");
+  Serial1.print(gyro.x);
+  Serial1.print(",");
+  Serial1.print(gyro.y);
+  Serial1.print(",");
+  Serial1.print(gyro.z);
+  Serial1.print(",");
+  Serial1.print(rotVec.i);
+  Serial1.print(",");
+  Serial1.print(rotVec.j);
+  Serial1.print(",");
+  Serial1.print(rotVec.k);
+  Serial1.print(",");
+  Serial1.print(rotVec.real);
+  Serial1.print(",");
+  Serial1.print(SPSRow);
+  Serial1.print(",");
+  Serial1.print(SPS.front.array[SPSRow]);
+  Serial1.print(",");
+  Serial1.print(SPS.left.array[SPSRow]);
+  Serial1.print(",");
+  Serial1.print(SPS.right.array[SPSRow]);
+  Serial1.print(",");
   // Sun angle
   Serial.print(",");
-  Serial.print(barometer.pressure);
+  Serial.print(pressure);
   Serial.print(",");
   // board temp
   Serial.print(",");
@@ -286,4 +311,8 @@ void updateSPS() {
 float calculateSunAngle() {
   // Calculate sun angle
   return 0;
+}
+
+void applyControl() {
+  // Apply control
 }
