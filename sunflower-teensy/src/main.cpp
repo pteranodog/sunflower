@@ -13,6 +13,12 @@ enum FlightState {LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
 FlightState currentState = LAUNCH;
 // --------------------------
 
+// PID Constants
+const float Kp = 0.1;
+const float Ki = 0.1;
+const float Kd = 0.1;
+float deadzone = 0.1;
+float deadspeed = 0.1;
 
 // ---- PIN NUMBER SETUP ----
 // Serial1 pin
@@ -66,6 +72,10 @@ struct {
   float j;
   float k;
   float real;
+  float x;
+  float y;
+  float z;
+  float relativeSunAngle;
 } rotVec;
 double temp = 0;
 double pressure = 0;
@@ -92,13 +102,15 @@ Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 
 // -- FUNCTION DECLARATION --
 void getSensorData();
-FlightState updateState(FlightState state);
+FlightState updateState();
 void stabilize();
 void blinkLED(int LEDPin);
 void writeTelemetry();
 void parseIMUData();
 void updateSPS();
 float calculateSunAngle();
+void quaternionToEuler();
+void applyControl();
 // --------------------------
 
 
@@ -148,12 +160,14 @@ void loop() {
 }
 // --------------------------
 
-
 // -- FUNCTION DEFINITIONS --
 void getSensorData() {
   // Get sensor data
   parseIMUData();
   barometer.performReading();
+  temp = barometer.temperature;
+  pressure = barometer.pressure;
+  altitude = barometer.readAltitude(1013.25);
   updateSPS();
   sunAngle = calculateSunAngle();
 }
@@ -189,6 +203,17 @@ void parseIMUData() {
   }
 }
 
+void quaternionToEuler() {
+    float sqr = sq(rotVec.real);
+    float sqi = sq(rotVec.i);
+    float sqj = sq(rotVec.j);
+    float sqk = sq(rotVec.k);
+
+    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), (sqi - sqj - sqk + sqr));
+    rotVec.y = asin(-2.0 * (rotVec.i * rotVec.k - rotVec.k * rotVec.real) / (sqi + sqj + sqk + sqr));
+    rotVec.z = atan2(2.0 * (rotVec.j * rotVec.k + rotVec.i * rotVec.real), (-sqi - sqj + sqk + sqr));
+}
+
 FlightState updateState() {
   FlightState state = currentState;
   // Update the flight state
@@ -196,7 +221,7 @@ FlightState updateState() {
 }
 
 void stabilize() {
-  // Stabilize
+ // Stabilize
 }
 
 void blinkLED(int LEDPin) {
@@ -219,9 +244,9 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print("OFF"); // cam state?
   Serial1.print(",");
-  Serial1.print(barometer.readAltitude(1013.25));
+  Serial1.print(altitude);
   Serial1.print(",");
-  Serial1.print(barometer.temperature);
+  Serial1.print(temp);
   Serial1.print(",");
   Serial1.print(accel.x);
   Serial1.print(",");
@@ -253,7 +278,7 @@ void writeTelemetry() {
   Serial1.print(",");
   // Sun angle
   Serial1.print(",");
-  Serial1.print(barometer.pressure);
+  Serial1.print(pressure);
   Serial1.print(",");
   // board temp
   Serial1.print(",");
@@ -286,4 +311,8 @@ void updateSPS() {
 float calculateSunAngle() {
   // Calculate sun angle
   return 0;
+}
+
+void applyControl() {
+  // Apply control
 }
