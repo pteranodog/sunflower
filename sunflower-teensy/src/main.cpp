@@ -15,8 +15,8 @@ FlightState currentState = LAUNCH;
 
 
 // ---- PIN NUMBER SETUP ----
-// Serial1 pin
-const int Serial1_TX = 1;
+// Serial pin
+const int Serial_TX = 1;
 // Photoresistor selection pins
 const int PHOTORESISTOR_0 = 2;
 const int PHOTORESISTOR_1 = 3;
@@ -129,8 +129,8 @@ void setup() {
   imu.enableReport(SH2_ACCELEROMETER);
   imu.enableReport(SH2_GYROSCOPE_CALIBRATED);
   imu.enableReport(SH2_ROTATION_VECTOR);
-  // Start Serial1 output
-  Serial1.begin(115200);
+  // Start Serial output
+  Serial.begin(115200);
   // I don't know what this does but it was in the example
   barometer.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
@@ -143,7 +143,7 @@ void setup() {
 // --- MAIN LOOP FUNCTION ---
 void loop() {
   getSensorData();
-  blinkLED(BOARD_LED);
+  blinkLED(BOX_LED);
   writeTelemetry();
 }
 // --------------------------
@@ -210,67 +210,67 @@ void blinkLED(int LEDPin) {
 }
 
 void writeTelemetry() {
-  Serial1.print("RCS1,");
-  Serial1.print(millis());
-  Serial1.print(",");
-  Serial1.print(packets++);
-  Serial1.print(",");
-  Serial1.print(currentState);
-  Serial1.print(",");
-  Serial1.print("OFF"); // cam state?
-  Serial1.print(",");
-  Serial1.print(barometer.readAltitude(1013.25));
-  Serial1.print(",");
-  Serial1.print(barometer.temperature);
-  Serial1.print(",");
-  Serial1.print(accel.x);
-  Serial1.print(",");
-  Serial1.print(accel.y);
-  Serial1.print(",");
-  Serial1.print(accel.z);
-  Serial1.print(",");
-  Serial1.print(gyro.x);
-  Serial1.print(",");
-  Serial1.print(gyro.y);
-  Serial1.print(",");
-  Serial1.print(gyro.z);
-  Serial1.print(",");
-  Serial1.print(rotVec.i);
-  Serial1.print(",");
-  Serial1.print(rotVec.j);
-  Serial1.print(",");
-  Serial1.print(rotVec.k);
-  Serial1.print(",");
-  Serial1.print(rotVec.real);
-  Serial1.print(",");
-  Serial1.print(SPSRow);
-  Serial1.print(",");
-  Serial1.print(SPS.front.array[SPSRow]);
-  Serial1.print(",");
-  Serial1.print(SPS.left.array[SPSRow]);
-  Serial1.print(",");
-  Serial1.print(SPS.right.array[SPSRow]);
-  Serial1.print(",");
+  Serial.print("RCS1,");
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(packets++);
+  Serial.print(",");
+  Serial.print(currentState);
+  Serial.print(",");
+  Serial.print("OFF"); // cam state?
+  Serial.print(",");
+  Serial.print(barometer.readAltitude(1013.25));
+  Serial.print(",");
+  Serial.print(barometer.temperature);
+  Serial.print(",");
+  Serial.print(accel.x);
+  Serial.print(",");
+  Serial.print(accel.y);
+  Serial.print(",");
+  Serial.print(accel.z);
+  Serial.print(",");
+  Serial.print(gyro.x);
+  Serial.print(",");
+  Serial.print(gyro.y);
+  Serial.print(",");
+  Serial.print(gyro.z);
+  Serial.print(",");
+  Serial.print(rotVec.i);
+  Serial.print(",");
+  Serial.print(rotVec.j);
+  Serial.print(",");
+  Serial.print(rotVec.k);
+  Serial.print(",");
+  Serial.print(rotVec.real);
+  Serial.print(",");
+  Serial.print(SPSRow);
+  Serial.print(",");
+  Serial.print(SPS.front.array[SPSRow]);
+  Serial.print(",");
+  Serial.print(SPS.left.array[SPSRow]);
+  Serial.print(",");
+  Serial.print(SPS.right.array[SPSRow]);
+  Serial.print(",");
   // Sun angle
-  Serial1.print(",");
-  Serial1.print(barometer.pressure);
-  Serial1.print(",");
+  Serial.print(",");
+  Serial.print(barometer.pressure);
+  Serial.print(",");
   // board temp
-  Serial1.print(",");
+  Serial.print(",");
   // PID out
-  Serial1.print(",");
+  Serial.print(",");
   // deadzone
-  Serial1.print(",");
+  Serial.print(",");
   // deadspeed
-  Serial1.print(",");
+  Serial.print(",");
   // control out cw
-  Serial1.print(",");
+  Serial.print(",");
   // control out ccw
-  Serial1.print(",");
+  Serial.print(",");
   // calculated thrust
-  Serial1.print(",");
+  Serial.print(",");
   // solenoid on time
-  Serial1.println("");  
+  Serial.println("");  
 }
 // --------------------------
 
