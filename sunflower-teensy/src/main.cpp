@@ -1,16 +1,16 @@
 // -------- HEADERS ---------
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP3XX.h>
 #include <Adafruit_BNO08x.h>
+#include <Adafruit_BMP3XX.h>
+#include <Adafruit_Sensor.h>
 // --------------------------
  
 
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
-enum FlightState {LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = LAUNCH;
+enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
+FlightState currentState = TEST;
 // --------------------------
 
 // PID Constants
@@ -19,10 +19,13 @@ const float Ki = 0.1;
 const float Kd = 0.1;
 float deadzone = 0.1;
 float deadspeed = 0.1;
+float controlOut = 0;
+bool solenoidCW = false;
+bool solenoidCCW = false;
 
 // ---- PIN NUMBER SETUP ----
-// Serial pin
-const int Serial_TX = 1;
+// Serial1 pin
+const int Serial1_TX = 1;
 // Photoresistor selection pins
 const int PHOTORESISTOR_0 = 2;
 const int PHOTORESISTOR_1 = 3;
@@ -95,7 +98,7 @@ float sunAngle = 0;
 // IMU sensor setup
 Adafruit_BNO08x imu = Adafruit_BNO08x();
 sh2_SensorValue_t imuData;
-// Barometer sensor setup
+// // Barometer sensor setup
 Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 // --------------------------
 
@@ -104,13 +107,13 @@ Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 void getSensorData();
 FlightState updateState();
 void stabilize();
-void blinkLED(int LEDPin);
+void blinkLED(int LEDPin, unsigned int milliseconds);
 void writeTelemetry();
 void parseIMUData();
 void updateSPS();
 float calculateSunAngle();
 void quaternionToEuler();
-void applyControl();
+void applyControl(float control);
 // --------------------------
 
 
@@ -135,14 +138,24 @@ void setup() {
 
   // Start I2C
   Wire.begin();
-  imu.begin_I2C();
-  barometer.begin_I2C();
+  if (!imu.begin_I2C()) {
+    while(true) {
+      blinkLED(BOARD_LED, 500);
+      delay(50);
+    }
+  }
+  if (!barometer.begin_I2C()) {
+    while(true) {
+      blinkLED(BOARD_LED, 250);
+      delay(50);
+    }
+  }
   // Enable IMU Reports
   imu.enableReport(SH2_ACCELEROMETER);
   imu.enableReport(SH2_GYROSCOPE_CALIBRATED);
   imu.enableReport(SH2_ROTATION_VECTOR);
-  // Start Serial output
-  Serial.begin(115200);
+  // Start Serial1 output
+  Serial1.begin(115200);
   // I don't know what this does but it was in the example
   barometer.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
@@ -155,7 +168,11 @@ void setup() {
 // --- MAIN LOOP FUNCTION ---
 void loop() {
   getSensorData();
-  blinkLED(BOX_LED);
+  if (currentState == TEST) {
+    blinkLED(BOX_LED, 3000);
+  } else {
+    blinkLED(BOX_LED, 1000);
+  }
   writeTelemetry();
 }
 // --------------------------
@@ -196,6 +213,7 @@ void parseIMUData() {
           rotVec.j = imuData.un.rotationVector.j;
           rotVec.k = imuData.un.rotationVector.k;
           rotVec.real = imuData.un.rotationVector.real;
+          quaternionToEuler();
           updated.rotVec = true;
           break;
       }
@@ -205,13 +223,11 @@ void parseIMUData() {
 
 void quaternionToEuler() {
     float sqr = sq(rotVec.real);
-    float sqi = sq(rotVec.i);
     float sqj = sq(rotVec.j);
     float sqk = sq(rotVec.k);
-
-    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), (sqi - sqj - sqk + sqr));
-    rotVec.y = asin(-2.0 * (rotVec.i * rotVec.k - rotVec.k * rotVec.real) / (sqi + sqj + sqk + sqr));
-    rotVec.z = atan2(2.0 * (rotVec.j * rotVec.k + rotVec.i * rotVec.real), (-sqi - sqj + sqk + sqr));
+    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), 1.0 - 2.0 * (sqj + sqk));
+    rotVec.y = asin(2.0 * (rotVec.i * rotVec.k - rotVec.j * rotVec.real));
+    rotVec.z = atan2(2.0 * (rotVec.i * rotVec.real + rotVec.j * rotVec.k), 1.0 - 2.0 * (sqk + sqr));
 }
 
 FlightState updateState() {
@@ -221,21 +237,27 @@ FlightState updateState() {
 }
 
 void stabilize() {
- // Stabilize
+  static float integral = 0;
+  float proportional = rotVec.x * Kp;
+  integral += rotVec.x * Ki;
+  float derivative = gyro.x * Kd;
+  float control = proportional + integral + derivative;
+  applyControl(control);
+  controlOut = control;
 }
 
-void blinkLED(int LEDPin) {
-  static int millisAtLastBlink = millis();
-  if (millis() - millisAtLastBlink > 1000) {
+void blinkLED(int LEDPin, unsigned int milliseconds) {
+  static unsigned int millisAtFirstBlink = millis();
+  if (millis() - millisAtFirstBlink > milliseconds) {
     digitalWrite(LEDPin, HIGH);
-    millisAtLastBlink = millis();
+    millisAtFirstBlink = millis();
   } else {
     digitalWrite(LEDPin, LOW);
   }
 }
 
 void writeTelemetry() {
-  Serial1.print("RCS1,");
+  Serial1.print("1,");
   Serial1.print(millis());
   Serial1.print(",");
   Serial1.print(packets++);
@@ -277,25 +299,25 @@ void writeTelemetry() {
   Serial1.print(SPS.right.array[SPSRow]);
   Serial1.print(",");
   // Sun angle
-  Serial.print(",");
-  Serial.print(pressure);
-  Serial.print(",");
+  Serial1.print(",");
+  Serial1.print(pressure);
+  Serial1.print(",");
   // board temp
-  Serial.print(",");
+  Serial1.print(",");
   // PID out
-  Serial.print(",");
+  Serial1.print(",");
   // deadzone
-  Serial.print(",");
+  Serial1.print(",");
   // deadspeed
-  Serial.print(",");
+  Serial1.print(",");
   // control out cw
-  Serial.print(",");
+  Serial1.print(",");
   // control out ccw
-  Serial.print(",");
+  Serial1.print(",");
   // calculated thrust
-  Serial.print(",");
+  Serial1.print(",");
   // solenoid on time
-  Serial.println("");  
+  Serial1.println("");  
 }
 // --------------------------
 
@@ -313,6 +335,6 @@ float calculateSunAngle() {
   return 0;
 }
 
-void applyControl() {
+void applyControl(float control) {
   // Apply control
 }
