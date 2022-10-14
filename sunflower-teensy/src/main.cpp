@@ -240,6 +240,7 @@ void stabilize() {
   static float integral = 0;
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
+  integral *= 0.9;
   float derivative = gyro.x * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
@@ -304,15 +305,15 @@ void writeTelemetry() {
   Serial1.print(",");
   // board temp
   Serial1.print(",");
-  // PID out
+  Serial1.print(controlOut);
   Serial1.print(",");
-  // deadzone
+  Serial1.print(deadzone);
   Serial1.print(",");
-  // deadspeed
+  Serial1.print(deadspeed);
   Serial1.print(",");
-  // control out cw
+  Serial1.print(solenoidCW);
   Serial1.print(",");
-  // control out ccw
+  Serial1.print(solenoidCCW);
   Serial1.print(",");
   // calculated thrust
   Serial1.print(",");
