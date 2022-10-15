@@ -10,7 +10,7 @@
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
 enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = TEST;
+FlightState currentState = LAUNCH;
 // --------------------------
 
 // PID Constants
@@ -25,22 +25,23 @@ bool solenoidCCW = false;
 
 // ---- PIN NUMBER SETUP ----
 // Serial1 pin
+const int Serial1_RX = 21;
 const int Serial1_TX = 1;
 // Photoresistor selection pins
-const int PHOTORESISTOR_0 = 2;
-const int PHOTORESISTOR_1 = 3;
-const int PHOTORESISTOR_2 = 4;
-const int PHOTORESISTOR_3 = 5;
-const int PHOTORESISTOR_4 = 6;
-const int PHOTORESISTOR_5 = 7;
-const int PHOTORESISTOR_6 = 8;
+const int PHOTORESISTOR_0 = 3;
+const int PHOTORESISTOR_1 = 4;
+const int PHOTORESISTOR_2 = 5;
+const int PHOTORESISTOR_3 = 6;
+const int PHOTORESISTOR_4 = 7;
+const int PHOTORESISTOR_5 = 8;
+const int PHOTORESISTOR_6 = 9;
 // Solenoid control pins
 const int SOLENOID_CW = 9;
 const int SOLENOID_CCW = 10;
 // Camera pin
 const int CAMERA = 11;
 // LED pins
-const int BOX_LED = 12;
+const int BOX_LED = 0;
 const int BOARD_LED = 13;
 // Eye readout pins
 const int EYE_FRONT = 14;
@@ -119,10 +120,16 @@ void applyControl(float control);
 
 // -- MAIN SETUP FUNCTION --
 void setup() {
+  // Start Serial1 output
+  Serial1.setRX(Serial1_RX);
+  Serial1.setTX(Serial1_TX);
+  Serial1.begin(115200);
+
   // Pin mode setup!
   pinMode(BOARD_LED, OUTPUT);
   pinMode(BOX_LED, OUTPUT);
   pinMode(CAMERA, OUTPUT);
+  digitalWrite(CAMERA, HIGH);
   pinMode(SOLENOID_CW, OUTPUT);
   pinMode(SOLENOID_CCW, OUTPUT);
   pinMode(PHOTORESISTOR_0, OUTPUT);
@@ -137,6 +144,8 @@ void setup() {
   pinMode(EYE_RIGHT, INPUT);
 
   // Start I2C
+  Wire.setSCL(I2C_SCL);
+  Wire.setSDA(I2C_SDA);
   Wire.begin();
   if (!imu.begin_I2C()) {
     while(true) {
@@ -154,13 +163,17 @@ void setup() {
   imu.enableReport(SH2_ACCELEROMETER);
   imu.enableReport(SH2_GYROSCOPE_CALIBRATED);
   imu.enableReport(SH2_ROTATION_VECTOR);
-  // Start Serial1 output
-  Serial1.begin(115200);
+  
   // I don't know what this does but it was in the example
   barometer.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   barometer.setOutputDataRate(BMP3_ODR_50_HZ);
+
+  delay(1000);
+  digitalWrite(CAMERA, LOW);
+  delay(1000);
+  digitalWrite(CAMERA, HIGH);
 }
 // --------------------------
 
