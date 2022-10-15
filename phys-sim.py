@@ -37,7 +37,7 @@ position = 0
 velocity = 0
 accel = 0
 
-integral_positions = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+integral_cumulative = 0
 proportional = .2
 integral = .1
 derivative = -.7
@@ -75,8 +75,8 @@ control_force_indicator_multiplier = width
 
 def PID_control(pos, vel, target):
     global control_force_indicator, deadzone, deadspeed
-    integral_positions.pop(0)
-    integral_positions.append(target - pos)
+    integral_positions += (target - pos)
+    integral_positions *= 0.9
     if abs(vel) <= deadspeed and abs(target - pos) <= deadzone:
         if deadzone == seek_deadzone:
             deadzone = stable_deadzone
@@ -86,7 +86,7 @@ def PID_control(pos, vel, target):
         if deadzone == stable_deadzone:
             deadzone = seek_deadzone
             deadspeed = seek_deadspeed
-        desired_force = (target - pos) * proportional + (vel) * derivative + (sum(integral_positions)) * integral
+        desired_force = (target - pos) * proportional + (vel) * derivative + integral_positions
     control_force_indicator = desired_force
     return desired_force
 

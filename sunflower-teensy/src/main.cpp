@@ -10,18 +10,27 @@
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
 enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = LAUNCH;
+FlightState currentState = TEST;
 // --------------------------
 
-// PID Constants
-const float Kp = 0.1;
-const float Ki = 0.1;
-const float Kd = 0.1;
-float deadzone = 0.1;
-float deadspeed = 0.1;
+// ---- PID CONSTANTS ----
+const float Kp = 0.4;
+const float Ki = 0.01;
+const float Kd = 0.7;
+const float seekDeadzone = 0.1;
+const float seekDeadspeed = 0.1;
+const float stableDeadzone = 0.4;
+const float stableDeadspeed = 1;
+float currentDeadzone = stableDeadzone;
+float currentDeadspeed = stableDeadspeed;
 float controlOut = 0;
+float thresholdUpper = 0.1;
+float thresholdLower = 0.1;
 bool solenoidCW = false;
 bool solenoidCCW = false;
+int cumulativeSolenoidTime = 0;
+int maxSolenoidTime = 30000;
+float currentThrust = 0;
 
 // ---- PIN NUMBER SETUP ----
 // Serial1 pin
@@ -186,6 +195,9 @@ void loop() {
   } else {
     blinkLED(BOX_LED, 1000);
   }
+  if (currentState == STABILIZATION || currentState == TEST) {
+    stabilize();
+  }
   writeTelemetry();
 }
 // --------------------------
@@ -250,10 +262,22 @@ FlightState updateState() {
 }
 
 void stabilize() {
+  if (cumulativeSolenoidTime > maxSolenoidTime) {
+    return;
+  }
+  if (rotVec.x < currentDeadzone && rotVec.x > -currentDeadzone && gyro.x < currentDeadspeed && gyro.x > -currentDeadspeed) {
+    currentDeadzone = stableDeadzone;
+    currentDeadspeed = stableDeadspeed;
+    applyControl(0);
+    controlOut = 0;
+    return;
+  }
+  currentDeadzone = seekDeadzone;
+  currentDeadspeed = seekDeadspeed;
   static float integral = 0;
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
-  integral *= 0.9;
+  integral *= 0.95;
   float derivative = gyro.x * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
@@ -320,9 +344,9 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(controlOut);
   Serial1.print(",");
-  Serial1.print(deadzone);
+  Serial1.print(currentDeadzone);
   Serial1.print(",");
-  Serial1.print(deadspeed);
+  Serial1.print(currentDeadspeed);
   Serial1.print(",");
   Serial1.print(solenoidCW);
   Serial1.print(",");
@@ -350,5 +374,49 @@ float calculateSunAngle() {
 }
 
 void applyControl(float control) {
-  // Apply control
+  static int solenoidStartTime = 0;
+  if (abs(control) > thresholdUpper && !solenoidCW && !solenoidCCW) {
+    if (control > 0) {
+      digitalWrite(SOLENOID_CW, HIGH);
+      solenoidCW = true;
+      solenoidStartTime = millis();
+    } else {
+      digitalWrite(SOLENOID_CCW, HIGH);
+      solenoidCCW = true;
+      solenoidStartTime = millis();
+    }
+  }
+  if (solenoidCW && control < thresholdLower) {
+    digitalWrite(SOLENOID_CW, LOW);
+    solenoidCW = false;
+    cumulativeSolenoidTime += millis() - solenoidStartTime;
+  }
+  if (solenoidCCW && control > -thresholdLower) {
+    digitalWrite(SOLENOID_CCW, LOW);
+    solenoidCCW = false;
+    cumulativeSolenoidTime += millis() - solenoidStartTime;
+  }
+  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 1000) {
+    digitalWrite(SOLENOID_CW, LOW);
+    digitalWrite(SOLENOID_CCW, LOW);
+    solenoidCW = false;
+    solenoidCCW = false;
+    cumulativeSolenoidTime += millis() - solenoidStartTime;
+  } 
+}
+
+float calculateThrust() {
+  static float previousX = 0;
+  static float previousTime = millis();
+  static float solenoidWasOn = false;
+  
+  if (solenoidWasOn) {
+    // Return average of current thrust and new calculated thrust (for smoothness)
+    return (currentThrust + (abs(rotVec.x - previousX) / (millis() - previousTime))) / 2;
+  }
+
+  previousTime = millis();
+  previousX = rotVec.x;
+  solenoidWasOn = solenoidCCW || solenoidCW;
+  return 0;
 }
