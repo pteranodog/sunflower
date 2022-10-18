@@ -29,7 +29,7 @@ float thresholdLower = 0.1;
 bool solenoidCW = false;
 bool solenoidCCW = false;
 int cumulativeSolenoidTime = 0;
-int maxSolenoidTime = 30000;
+int maxSolenoidTime = 30 * 1000;
 float currentThrust = 0;
 
 // ---- PIN NUMBER SETUP ----
@@ -45,8 +45,8 @@ const int PHOTORESISTOR_4 = 7;
 const int PHOTORESISTOR_5 = 8;
 const int PHOTORESISTOR_6 = 9;
 // Solenoid control pins
-const int SOLENOID_CW = 9;
-const int SOLENOID_CCW = 10;
+const int SOLENOID_CW = 22;
+const int SOLENOID_CCW = 23;
 // Camera pin
 const int CAMERA = 11;
 // LED pins
@@ -279,7 +279,7 @@ void stabilize() {
   integral += rotVec.x * Ki;
   integral *= 0.95;
   float derivative = gyro.x * Kd;
-  float control = proportional + integral + derivative;
+  float control = proportional + integral - derivative;
   applyControl(control);
   controlOut = control;
 }
@@ -375,6 +375,10 @@ float calculateSunAngle() {
 
 void applyControl(float control) {
   static int solenoidStartTime = 0;
+  static int solenoidCooldown = 0;
+  if (millis() < solenoidCooldown) {
+    return;
+  }
   if (abs(control) > thresholdUpper && !solenoidCW && !solenoidCCW) {
     if (control > 0) {
       digitalWrite(SOLENOID_CW, HIGH);
@@ -396,12 +400,13 @@ void applyControl(float control) {
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
   }
-  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 1000) {
+  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 1500) {
     digitalWrite(SOLENOID_CW, LOW);
     digitalWrite(SOLENOID_CCW, LOW);
     solenoidCW = false;
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
+    solenoidCooldown = 15000 + millis();
   } 
 }
 
