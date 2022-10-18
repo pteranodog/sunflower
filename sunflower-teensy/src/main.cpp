@@ -15,9 +15,9 @@ FlightState currentState = TEST;
 // --------------------------
 
 // ---- PID CONSTANTS ----
-const float Kp = -0.4;
+const float Kp = -0.95;
 const float Ki = -0.01;
-const float Kd = 0.7;
+const float Kd = .45;
 const float seekDeadzone = 0.1;
 const float seekDeadspeed = 0.1;
 const float stableDeadzone = 0.4;
@@ -276,12 +276,12 @@ void stabilize() {
   }
   currentDeadzone = seekDeadzone;
   currentDeadspeed = seekDeadspeed;
-  static float integral = 0;
+  // static float integral = 0;
   float proportional = rotVec.x * Kp;
-  integral += rotVec.x * Ki;
-  integral *= 0.97;
+  // integral += rotVec.x * Ki;
+  // integral *= 0.97;
   float derivative = gyro.z * Kd;
-  float control = proportional + integral + derivative;
+  float control = proportional /*+ integral*/ + derivative;
   applyControl(control);
   controlOut = control;
   currentThrust = calculateThrust();
