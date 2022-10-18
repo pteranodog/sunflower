@@ -4,6 +4,7 @@
 #include <Adafruit_BNO08x.h>
 #include <Adafruit_BMP3XX.h>
 #include <Adafruit_Sensor.h>
+#include <InternalTemperature.h>
 // --------------------------
  
 
@@ -14,8 +15,8 @@ FlightState currentState = TEST;
 // --------------------------
 
 // ---- PID CONSTANTS ----
-const float Kp = 0.4;
-const float Ki = 0.01;
+const float Kp = -0.4;
+const float Ki = -0.01;
 const float Kd = 0.7;
 const float seekDeadzone = 0.1;
 const float seekDeadspeed = 0.1;
@@ -114,6 +115,7 @@ Adafruit_BMP3XX barometer = Adafruit_BMP3XX();
 
 
 // -- FUNCTION DECLARATION --
+void checkCamera();
 void getSensorData();
 FlightState updateState();
 void stabilize();
@@ -158,13 +160,13 @@ void setup() {
   Wire.begin();
   if (!imu.begin_I2C()) {
     while(true) {
-      blinkLED(BOARD_LED, 500);
+      blinkLED(BOX_LED, 500);
       delay(50);
     }
   }
   if (!barometer.begin_I2C()) {
     while(true) {
-      blinkLED(BOARD_LED, 250);
+      blinkLED(BOX_LED, 250);
       delay(50);
     }
   }
@@ -178,17 +180,13 @@ void setup() {
   barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   barometer.setOutputDataRate(BMP3_ODR_50_HZ);
-
-  delay(1000);
-  digitalWrite(CAMERA, LOW);
-  delay(1000);
-  digitalWrite(CAMERA, HIGH);
 }
 // --------------------------
 
 
 // --- MAIN LOOP FUNCTION ---
 void loop() {
+  checkCamera();
   getSensorData();
   if (currentState == TEST) {
     blinkLED(BOX_LED, 3000);
@@ -203,6 +201,10 @@ void loop() {
 // --------------------------
 
 // -- FUNCTION DEFINITIONS --
+
+void checkCamera() {
+  
+}
 void getSensorData() {
   // Get sensor data
   parseIMUData();
@@ -277,11 +279,12 @@ void stabilize() {
   static float integral = 0;
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
-  integral *= 0.95;
-  float derivative = gyro.x * Kd;
+  integral *= 0.97;
+  float derivative = gyro.z * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
   controlOut = control;
+  currentThrust = calculateThrust();
 }
 
 void blinkLED(int LEDPin, unsigned int milliseconds) {
@@ -302,7 +305,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(currentState);
   Serial1.print(",");
-  Serial1.print("OFF"); // cam state?
+  Serial1.print("0"); // cam state?
   Serial1.print(",");
   Serial1.print(altitude);
   Serial1.print(",");
@@ -340,7 +343,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(pressure);
   Serial1.print(",");
-  // board temp
+  Serial1.print(InternalTemperature.readTemperatureC());
   Serial1.print(",");
   Serial1.print(controlOut);
   Serial1.print(",");
@@ -352,9 +355,9 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(solenoidCCW);
   Serial1.print(",");
-  // calculated thrust
+  Serial1.print(currentThrust);
   Serial1.print(",");
-  // solenoid on time
+  Serial1.print(cumulativeSolenoidTime);
   Serial1.println("");  
 }
 // --------------------------
@@ -396,27 +399,28 @@ void applyControl(float control) {
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
   }
-  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 1000) {
+  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 200) {
     digitalWrite(SOLENOID_CW, LOW);
     digitalWrite(SOLENOID_CCW, LOW);
     solenoidCW = false;
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
+    // disable solenoids for 150 ms
   } 
 }
 
 float calculateThrust() {
-  static float previousX = 0;
+  static float previousVel = 0;
   static float previousTime = millis();
   static float solenoidWasOn = false;
   
   if (solenoidWasOn) {
     // Return average of current thrust and new calculated thrust (for smoothness)
-    return (currentThrust + (abs(rotVec.x - previousX) / (millis() - previousTime))) / 2;
+    return (currentThrust + (abs(gyro.z - previousVel) / (millis() - previousTime))) / 2;
   }
 
   previousTime = millis();
-  previousX = rotVec.x;
+  previousVel = gyro.z;
   solenoidWasOn = solenoidCCW || solenoidCW;
   return 0;
 }
