@@ -14,7 +14,7 @@ enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED}
 FlightState currentState = TEST;
 // --------------------------
 
-// ---- PID CONSTANTS ----
+// -- CONTROL CONSTANTS --
 const float Kp = -0.95;
 const float Ki = -0.01;
 const float Kd = .45;
@@ -32,6 +32,7 @@ bool solenoidCCW = false;
 int cumulativeSolenoidTime = 0;
 int maxSolenoidTime = 30 * 1000;
 float currentThrust = 0;
+// ------------------------
 
 // ---- PIN NUMBER SETUP ----
 // Serial1 pin
@@ -60,6 +61,7 @@ const int EYE_RIGHT = 16;
 // I2C pins
 const int I2C_SDA = 18;
 const int I2C_SCL = 19;
+const int SOLAR_PANEL = 20;
 // --------------------------
 
 unsigned int packets = 0;
@@ -126,6 +128,7 @@ void updateSPS();
 float calculateSunAngle();
 void quaternionToEuler();
 void applyControl(float control);
+float calculateThrust();
 // --------------------------
 
 
@@ -153,6 +156,7 @@ void setup() {
   pinMode(EYE_FRONT, INPUT);
   pinMode(EYE_LEFT, INPUT);
   pinMode(EYE_RIGHT, INPUT);
+  pinMode(SOLAR_PANEL, INPUT);
 
   // Start I2C
   Wire.setSCL(I2C_SCL);
@@ -203,8 +207,9 @@ void loop() {
 // -- FUNCTION DEFINITIONS --
 
 void checkCamera() {
-  
+  // TODO
 }
+
 void getSensorData() {
   // Get sensor data
   parseIMUData();
@@ -305,7 +310,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(currentState);
   Serial1.print(",");
-  Serial1.print("0"); // cam state?
+  Serial1.print("0"); // cam state? TODO
   Serial1.print(",");
   Serial1.print(altitude);
   Serial1.print(",");
@@ -339,7 +344,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(SPS.right.array[SPSRow]);
   Serial1.print(",");
-  // Sun angle
+  // Sun angle TODO
   Serial1.print(",");
   Serial1.print(pressure);
   Serial1.print(",");
@@ -358,7 +363,9 @@ void writeTelemetry() {
   Serial1.print(currentThrust);
   Serial1.print(",");
   Serial1.print(cumulativeSolenoidTime);
-  Serial1.println("");  
+  Serial1.print(",");
+  Serial1.print(analogRead(SOLAR_PANEL));
+  Serial1.println("");
 }
 // --------------------------
 
@@ -372,13 +379,13 @@ void updateSPS() {
 }
 
 float calculateSunAngle() {
-  // Calculate sun angle
+  // Calculate sun angle TODO
   return 0;
 }
 
 void applyControl(float control) {
   static int solenoidStartTime = 0;
-  static int solenoidCooldown = 0;
+  static unsigned int solenoidCooldown = 0;
   if (millis() < solenoidCooldown) {
     return;
   }
@@ -409,12 +416,11 @@ void applyControl(float control) {
     solenoidCW = false;
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
-    solenoidCooldown = 15000 + millis();
-    // disable solenoids for 150 ms
+    solenoidCooldown = 150 + millis();
   } 
 }
 
-float calculateThrust() {
+float calculateThrust() { // TODO?
   static float previousVel = 0;
   static float previousTime = millis();
   static float solenoidWasOn = false;
