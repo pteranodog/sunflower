@@ -15,7 +15,7 @@ FlightState currentState = TEST;
 // --------------------------
 
 // -- CONTROL CONSTANTS --
-const float[][] pidLookup = {
+const float pidLookup[][3] = {
   {0.0, 0.0, 0.0},
   {0.0, 0.0, 0.0},
   {0.0, 0.0, 0.0},
@@ -36,7 +36,7 @@ const float[][] pidLookup = {
   {0.0, 0.0, 0.0},
   {0.0, 0.0, 0.0},
   {0.0, 0.0, 0.0},
-  {0.0, 0.0, 0.0},
+  {0.0, 0.0, 0.0}
 };
 
 const float Kp = -0.9;
@@ -444,7 +444,7 @@ void applyControl(float control) {
   } 
 }
 
-float calculateThrust() { // TODO?
+float calculateThrust() {
   static float previousVel = 0;
   static float previousTime = millis();
   static float solenoidWasOn = false;
