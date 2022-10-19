@@ -37,10 +37,11 @@ position = 0
 velocity = 0
 accel = 0
 
+TESTFORCE = 7
 integral_cumulative = 0
-proportional = 1
-integral = .01
-derivative = -.4
+proportional = .9
+integral = 0
+derivative = -.3
 setpoint = 0
 seek_deadzone = .1
 stable_deadzone = .4
@@ -141,7 +142,7 @@ def updateRCS():
     rcs_direction = 0
     rcs_force = (pressure * nozzle_area) - (altitude_pressure * nozzle_area)
     applied_force = 0
-    rcs_force = 7
+    rcs_force = TESTFORCE
 
     desired_force = PID_control(position, velocity, setpoint)
     rcs_direction = PWM_control(rcs_force, desired_force)
