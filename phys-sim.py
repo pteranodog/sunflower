@@ -38,14 +38,14 @@ velocity = 0
 accel = 0
 
 integral_cumulative = 0
-proportional = .2
-integral = .1
-derivative = -.7
+proportional = 1
+integral = .01
+derivative = -.4
 setpoint = 0
-seek_deadzone = .06
+seek_deadzone = .1
 stable_deadzone = .4
 deadzone = seek_deadzone
-seek_deadspeed = .001
+seek_deadspeed = .1
 stable_deadspeed = 1
 deadspeed = stable_deadspeed
 
@@ -74,9 +74,9 @@ control_force_indicator_multiplier = width
 
 
 def PID_control(pos, vel, target):
-    global control_force_indicator, deadzone, deadspeed
-    integral_positions += (target - pos)
-    integral_positions *= 0.9
+    global control_force_indicator, deadzone, deadspeed, integral_cumulative
+    # integral_cumulative += (target - pos)
+    # integral_cumulative *= 0.6
     if abs(vel) <= deadspeed and abs(target - pos) <= deadzone:
         if deadzone == seek_deadzone:
             deadzone = stable_deadzone
@@ -86,7 +86,7 @@ def PID_control(pos, vel, target):
         if deadzone == stable_deadzone:
             deadzone = seek_deadzone
             deadspeed = seek_deadspeed
-        desired_force = (target - pos) * proportional + (vel) * derivative + integral_positions
+        desired_force = (target - pos) * proportional + (vel) * derivative # + integral_cumulative
     control_force_indicator = desired_force
     return desired_force
 
@@ -141,12 +141,14 @@ def updateRCS():
     rcs_direction = 0
     rcs_force = (pressure * nozzle_area) - (altitude_pressure * nozzle_area)
     applied_force = 0
+    rcs_force = 7
 
     desired_force = PID_control(position, velocity, setpoint)
     rcs_direction = PWM_control(rcs_force, desired_force)
+    cutoff_solenoid = 0
     applied_force = rcs_force * (0 if cutoff_solenoid == 1 else rcs_direction)
     
-    accel = (applied_force * radius / rotational_inertia)
+    accel = applied_force
     velocity += accel / fps
     position += velocity / fps
 
