@@ -188,13 +188,13 @@ void setup() {
   Wire.begin();
   if (!imu.begin_I2C()) {
     while(true) {
-      blinkLED(BOX_LED, 500);
+      blinkLED(BOARD_LED, 500);
       delay(50);
     }
   }
   if (!barometer.begin_I2C()) {
     while(true) {
-      blinkLED(BOX_LED, 250);
+      blinkLED(BOARD_LED, 250);
       delay(50);
     }
   }
@@ -208,6 +208,15 @@ void setup() {
   barometer.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   barometer.setOutputDataRate(BMP3_ODR_50_HZ);
+
+  digitalWrite(SOLENOID_CW, HIGH);
+  delay(100);
+  digitalWrite(SOLENOID_CW, LOW);
+  delay(1000);
+  digitalWrite(SOLENOID_CCW, HIGH);
+  delay(100);
+  digitalWrite(SOLENOID_CCW, LOW);
+  delay(1000);
 }
 // --------------------------
 
@@ -217,7 +226,7 @@ void loop() {
   checkCamera();
   getSensorData();
   if (currentState == TEST) {
-    blinkLED(BOX_LED, 3000);
+    blinkLED(BOARD_LED, 3000);
   } else {
     blinkLED(BOX_LED, 1000);
   }
