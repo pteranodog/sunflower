@@ -14,6 +14,9 @@ enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED}
 FlightState currentState = TEST;
 // --------------------------
 
+enum CamState {OFF, ON};
+CamState camState = OFF;
+
 // -- CONTROL CONSTANTS --
 const float pidLookup[][3] = {
   {0.0, 0.0, 0.0},
@@ -240,7 +243,14 @@ void loop() {
 // -- FUNCTION DEFINITIONS --
 
 void checkCamera() {
-  // TODO
+  static unsigned int cameraInterval = 5 * 60 * 1000;
+  static unsigned int lastToggle;
+  static unsigned int cameraPinLowTime = 0;
+  if (camState == ON) {
+    // TODO
+  } else {
+    
+  }
 }
 
 void getSensorData() {
@@ -343,7 +353,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(currentState);
   Serial1.print(",");
-  Serial1.print("0"); // cam state? TODO
+  Serial1.print(camState); // cam state? TODO
   Serial1.print(",");
   Serial1.print(altitude);
   Serial1.print(",");
