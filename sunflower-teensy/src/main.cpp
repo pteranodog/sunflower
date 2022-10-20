@@ -41,7 +41,7 @@ const float pidLookup[][3] = {
 
 const float Kp = -0.9;
 const float Ki = 0;
-const float Kd = .3;
+const float Kd = -.3;
 const float seekDeadzone = 0.1;
 const float seekDeadspeed = 0.1;
 const float stableDeadzone = 0.4;
@@ -309,7 +309,7 @@ void stabilize() {
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
   integral *= 0.97;
-  float derivative = gyro.z * Kd;
+  float derivative = -gyro.z * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
   controlOut = control;
@@ -350,7 +350,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(gyro.y);
   Serial1.print(",");
-  Serial1.print(gyro.z);
+  Serial1.print(-gyro.z);
   Serial1.print(",");
   Serial1.print(rotVec.i);
   Serial1.print(",");
@@ -411,6 +411,10 @@ void applyControl(float control) {
   static int solenoidStartTime = 0;
   static unsigned int solenoidCooldown = 0;
   if (millis() < solenoidCooldown) {
+    digitalWrite(SOLENOID_CW, LOW);
+    digitalWrite(SOLENOID_CCW, LOW);
+    solenoidCW = false;
+    solenoidCCW = false;
     return;
   }
   if (abs(control) > thresholdUpper && !solenoidCW && !solenoidCCW) {
