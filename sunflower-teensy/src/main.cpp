@@ -39,9 +39,9 @@ const float pidLookup[][3] = {
   {0.0, 0.0, 0.0}
 };
 
-const float Kp = -0.9;
+const float Kp = 0.6;
 const float Ki = 0;
-const float Kd = -.3;
+const float Kd = -.4;
 const float seekDeadzone = 0.1;
 const float seekDeadspeed = 0.1;
 const float stableDeadzone = 0.4;
@@ -188,13 +188,13 @@ void setup() {
   Wire.begin();
   if (!imu.begin_I2C()) {
     while(true) {
-      blinkLED(BOARD_LED, 500);
+      blinkLED(BOX_LED, 500);
       delay(50);
     }
   }
   if (!barometer.begin_I2C()) {
     while(true) {
-      blinkLED(BOARD_LED, 250);
+      blinkLED(BOX_LED, 250);
       delay(50);
     }
   }
@@ -226,7 +226,7 @@ void loop() {
   checkCamera();
   getSensorData();
   if (currentState == TEST) {
-    blinkLED(BOARD_LED, 3000);
+    blinkLED(BOX_LED, 3000);
   } else {
     blinkLED(BOX_LED, 1000);
   }
@@ -318,7 +318,7 @@ void stabilize() {
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
   integral *= 0.97;
-  float derivative = -gyro.z * Kd;
+  float derivative = -1.0 * gyro.z * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
   controlOut = control;
@@ -359,7 +359,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(gyro.y);
   Serial1.print(",");
-  Serial1.print(-gyro.z);
+  Serial1.print(-1.0 * gyro.z);
   Serial1.print(",");
   Serial1.print(rotVec.i);
   Serial1.print(",");
@@ -368,6 +368,12 @@ void writeTelemetry() {
   Serial1.print(rotVec.k);
   Serial1.print(",");
   Serial1.print(rotVec.real);
+  Serial1.print(",");
+  Serial1.print(rotVec.x);
+  Serial1.print(",");
+  Serial1.print(rotVec.y);
+  Serial1.print(",");
+  Serial1.print(rotVec.z);
   Serial1.print(",");
   Serial1.print(SPSRow);
   Serial1.print(",");
@@ -447,13 +453,13 @@ void applyControl(float control) {
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
   }
-  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 200) {
+  if ((solenoidCCW || solenoidCW) && millis() - solenoidStartTime > 100) {
     digitalWrite(SOLENOID_CW, LOW);
     digitalWrite(SOLENOID_CCW, LOW);
     solenoidCW = false;
     solenoidCCW = false;
     cumulativeSolenoidTime += millis() - solenoidStartTime;
-    solenoidCooldown = 150 + millis();
+    solenoidCooldown = 100 + millis();
   } 
 }
 
