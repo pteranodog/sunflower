@@ -41,7 +41,7 @@ const float pidLookup[][3] = {
 
 const float Kp = 0.6;
 const float Ki = 0;
-const float Kd = -.4;
+const float Kd = .4;
 const float seekDeadzone = 0.1;
 const float seekDeadspeed = 0.1;
 const float stableDeadzone = 0.4;
@@ -318,7 +318,7 @@ void stabilize() {
   float proportional = rotVec.x * Kp;
   integral += rotVec.x * Ki;
   integral *= 0.97;
-  float derivative = -1.0 * gyro.z * Kd;
+  float derivative = gyro.z * Kd;
   float control = proportional + integral + derivative;
   applyControl(control);
   controlOut = control;
@@ -359,7 +359,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(gyro.y);
   Serial1.print(",");
-  Serial1.print(-1.0 * gyro.z);
+  Serial1.print(gyro.z);
   Serial1.print(",");
   Serial1.print(rotVec.i);
   Serial1.print(",");
