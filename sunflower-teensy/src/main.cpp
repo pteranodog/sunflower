@@ -11,7 +11,7 @@
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
 enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = LAUNCH;
+FlightState currentState = TEST;
 // --------------------------
 
 enum CamState {CAM_OFF, CAM_ON, CAM_RISING, CAM_FALLING};
