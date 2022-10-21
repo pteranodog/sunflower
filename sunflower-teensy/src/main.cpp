@@ -14,8 +14,8 @@ enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED}
 FlightState currentState = LAUNCH;
 // --------------------------
 
-enum CamState {OFF, ON};
-CamState camState = OFF;
+enum CamState {CAM_OFF, CAM_ON, CAM_RISING, CAM_FALLING};
+CamState camState = CAM_OFF;
 
 // -- CONTROL CONSTANTS --
 const float pidLookup[][3] = {
@@ -82,9 +82,9 @@ const int CAMERA = 11;
 const int BOX_LED = 0;
 const int BOARD_LED = 13;
 // Eye readout pins
-const int EYE_FRONT = 14;
-const int EYE_LEFT = 15;
+const int EYE_FRONT = 17;
 const int EYE_RIGHT = 16;
+const int EYE_LEFT = 15;
 // I2C pins
 const int I2C_SDA = 18;
 const int I2C_SCL = 19;
@@ -256,13 +256,40 @@ void loop() {
 // -- FUNCTION DEFINITIONS --
 
 void checkCamera() {
-  static unsigned int cameraInterval = 5 * 60 * 1000;
-  static unsigned int lastToggle;
-  static unsigned int cameraPinLowTime = 0;
-  if (camState == ON) {
-    // TODO
-  } else {
-    // IF CAMERA IS OFF AND LANDED, DON'T TURN IT ON
+  static unsigned int cameraInterval = 0.1 * 60 * 1000;
+  static unsigned int lastChange = 10 * 1000;
+  switch (camState) {
+    case CAM_ON:
+      if (millis() - lastChange > cameraInterval) {
+        digitalWrite(CAMERA, LOW);
+        camState = CAM_FALLING;
+        lastChange = millis();
+      }
+      break;
+    case CAM_FALLING:
+      if (millis() - lastChange > 700) {
+        digitalWrite(CAMERA, HIGH);
+        camState = CAM_OFF;
+        lastChange = millis();
+      }
+      break;
+    case CAM_OFF:
+      if (currentState == LANDED) {
+        return;
+      }
+      if (millis() - lastChange > 500) {
+        digitalWrite(CAMERA, LOW);
+        camState = CAM_RISING;
+        lastChange = millis();
+      }
+      break;
+    case CAM_RISING:
+      if (millis() - lastChange > 700) {
+        digitalWrite(CAMERA, HIGH);
+        camState = CAM_ON;
+        lastChange = millis();
+      }
+      break;
   }
 }
 
@@ -272,7 +299,7 @@ void getSensorData() {
   barometer.performReading();
   temp = barometer.temperature;
   pressure = barometer.pressure;
-  altitude = barometer.readAltitude(1013.25);
+  altitude = barometer.readAltitude(groundpressure);
   updateSPS();
   sunAngle = calculateSunAngle();
 }
@@ -426,7 +453,7 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(currentState);
   Serial1.print(",");
-  Serial1.print(camState); // cam state? TODO
+  Serial1.print(camState);
   Serial1.print(",");
   Serial1.print(altitude);
   Serial1.print(",");
