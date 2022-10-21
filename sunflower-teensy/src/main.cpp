@@ -45,9 +45,9 @@ const float pidLookup[][3] = {
 const float Kp = 0.6;
 const float Ki = 0;
 const float Kd = .4;
-const float seekDeadzone = 0.1;
+const float seekDeadzone = 0.4;
 const float seekDeadspeed = 0.1;
-const float stableDeadzone = 0.4;
+const float stableDeadzone = 0.6;
 const float stableDeadspeed = 1;
 float currentDeadzone = stableDeadzone;
 float currentDeadspeed = stableDeadspeed;
@@ -545,18 +545,18 @@ void updateSPS() {
 
 float calculateSunAngle() {
   float newSunAngle;
-  float frontLargest = largestPhotoresistor(SPS.front);
-  float leftLargest = largestPhotoresistor(SPS.left);
-  float rightLargest = largestPhotoresistor(SPS.right);
+  int frontLargest = largestPhotoresistor(SPS.front);
+  int leftLargest = largestPhotoresistor(SPS.left);
+  int rightLargest = largestPhotoresistor(SPS.right);
   if (leftLargest == 6 && rightLargest == 0) {
-    return 0.0;
+    return rotVec.x;
   }
-  if (frontLargest > leftLargest && frontLargest > rightLargest) {
-    newSunAngle = .3285 * frontLargest + 2.2997;
-  } else if (leftLargest > frontLargest && leftLargest > rightLargest) {
-    newSunAngle = .3285 * leftLargest - 2.2997;
-  } else if (rightLargest > frontLargest && rightLargest > leftLargest) {
-    newSunAngle = .3285 * rightLargest;
+  if (SPS.front.array[frontLargest] > SPS.left.array[leftLargest] && SPS.front.array[frontLargest] > SPS.right.array[rightLargest]) {
+    newSunAngle = .3285 * frontLargest + 2.2997 + rotVec.x;
+  } else if (SPS.left.array[leftLargest] > SPS.front.array[frontLargest] && SPS.left.array[leftLargest] > SPS.right.array[rightLargest]) {
+    newSunAngle = .3285 * leftLargest - 2.2997 + rotVec.x;
+  } else if (SPS.right.array[rightLargest] > SPS.front.array[frontLargest] && SPS.right.array[rightLargest] > SPS.left.array[leftLargest]) {
+    newSunAngle = .3285 * rightLargest + rotVec.x;
   } else {
     newSunAngle = 0;
   }
