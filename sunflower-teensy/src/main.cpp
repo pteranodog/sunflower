@@ -134,6 +134,7 @@ struct {
 unsigned int SPSRow = 0;
 float sunAngle = 0;
 double groundpressure;
+bool ledOn = false;
 
 // ------ SENSOR SETUP ------
 // IMU sensor setup
@@ -410,8 +411,10 @@ void blinkLED(int LEDPin, unsigned int milliseconds) {
   if (millis() - millisAtFirstBlink > milliseconds) {
     digitalWrite(LEDPin, HIGH);
     millisAtFirstBlink = millis();
+    ledOn = true;
   } else {
     digitalWrite(LEDPin, LOW);
+    ledOn = false;
   }
 }
 
@@ -457,11 +460,15 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(SPSRow);
   Serial1.print(",");
-  Serial1.print(SPS.front.array[SPSRow]);
-  Serial1.print(",");
-  Serial1.print(SPS.left.array[SPSRow]);
-  Serial1.print(",");
-  Serial1.print(SPS.right.array[SPSRow]);
+  if (ledOn) {
+    Serial1.print("-1,-1,-1");
+  } else {
+    Serial1.print(SPS.front.array[SPSRow]);
+    Serial1.print(",");
+    Serial1.print(SPS.left.array[SPSRow]);
+    Serial1.print(",");
+    Serial1.print(SPS.right.array[SPSRow]);
+  }
   Serial1.print(",");
   // Sun angle TODO
   Serial1.print(",");
@@ -489,6 +496,9 @@ void writeTelemetry() {
 // --------------------------
 
 void updateSPS() {
+  if (ledOn) {
+    return;
+  }
   SPS.front.array[SPSRow] = analogRead(EYE_FRONT);
   SPS.left.array[SPSRow] = analogRead(EYE_LEFT);
   SPS.right.array[SPSRow] = analogRead(EYE_RIGHT);
