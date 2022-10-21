@@ -433,8 +433,8 @@ void stabilize() {
   currentDeadzone = seekDeadzone;
   currentDeadspeed = seekDeadspeed;
   static float integral = 0;
-  float proportional = (sunAngle - rotVec.x) * Kp;
-  integral += (sunAngle - rotVec.x) * Ki;
+  float proportional = (rotVec.x - sunAngle) * Kp;
+  integral += (rotVec.x - sunAngle) * Ki;
   integral *= 0.97;
   float derivative = gyro.z * Kd;
   float control = proportional + integral + derivative;
