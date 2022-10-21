@@ -11,7 +11,7 @@
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
 enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = TEST;
+FlightState currentState = LAUNCH;
 // --------------------------
 
 enum CamState {OFF, ON};
@@ -133,6 +133,7 @@ struct {
 } SPS;
 unsigned int SPSRow = 0;
 float sunAngle = 0;
+double groundpressure;
 
 // ------ SENSOR SETUP ------
 // IMU sensor setup
@@ -212,6 +213,17 @@ void setup() {
   barometer.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   barometer.setOutputDataRate(BMP3_ODR_50_HZ);
 
+  for (int i = 0; i < 10; i++) {
+    barometer.readPressure();
+    delay(50);
+  }
+  for (int i = 0; i < 10; i++) {
+    groundpressure += barometer.readPressure();
+    delay(50);
+  }
+  groundpressure /= 10.0;
+  groundpressure /= 100.0;
+
   digitalWrite(SOLENOID_CW, HIGH);
   delay(100);
   digitalWrite(SOLENOID_CW, LOW);
@@ -249,7 +261,7 @@ void checkCamera() {
   if (camState == ON) {
     // TODO
   } else {
-    
+    // IF CAMERA IS OFF AND LANDED, DON'T TURN IT ON
   }
 }
 
@@ -306,9 +318,67 @@ void quaternionToEuler() {
 }
 
 FlightState updateState() {
-  FlightState state = currentState;
-  // Update the flight state
-  return state;
+  switch (currentState) {
+    case LAUNCH:
+      if (altitude > 3000) {
+        return ASCENT;
+      }
+    case TEST:
+      break;
+    case ASCENT:
+      if (altitude > 20000) {
+        return STABILIZATION;
+      }
+      break;
+    case STABILIZATION:
+      if (altitude < 3000) {
+        return LANDING;
+      }
+      if (abs(accel.x) < .03 && abs(accel.y) < .03 && abs(accel.z) < .03) {
+        return DESCENT;
+      }
+    case DESCENT:
+      if (altitude < 3000) {
+        return LANDING;
+      }
+      break;
+    case LANDING:
+      float mag = sqrt(sq(accel.x) + sq(accel.y) + sq(accel.z));
+      if (mag > 9.3 && mag < 10.5) {
+        return LANDED;
+      }
+      break;
+  }  if (altitude > 20000) {
+    return STABILIZATION;
+  }
+  return currentState;
+}
+
+FlightState nextState(FlightState next_state) {
+  static FlightState state_to_change = ASCENT;
+  static int stateChangeTime = 0;
+  if (currentState == TEST) {
+    return TEST;
+  }
+  if (currentState == LANDED) {
+    return LANDED;
+  }
+  if (next_state == currentState) {
+    state_to_change = currentState;
+    return currentState;
+  }
+  if (next_state == state_to_change) {
+    if (millis() > stateChangeTime) {
+      state_to_change = next_state;
+      return next_state;
+    } else {
+      return currentState;
+    }
+  } else {
+    state_to_change = next_state;
+    stateChangeTime = millis() + 5000;
+    return currentState;
+  }
 }
 
 void stabilize() {
