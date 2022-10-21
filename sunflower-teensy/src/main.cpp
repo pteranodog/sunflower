@@ -559,7 +559,7 @@ float calculateSunAngle() {
   } else if (SPS.right.array[rightLargest] > SPS.front.array[frontLargest] && SPS.right.array[rightLargest] > SPS.left.array[leftLargest]) {
     newSunAngle = .3285 * rightLargest + rotVec.x;
   } else {
-    newSunAngle = 0;
+    newSunAngle = sunAngle;
   }
   while (abs(newSunAngle) > PI) {
     if (newSunAngle > PI) {
@@ -573,7 +573,7 @@ float calculateSunAngle() {
 
 float smoothSunAngle(float newSunAngle) {
   float smoothedSunAngle = newSunAngle;
-  if (abs(newSunAngle - sunAngle) > 0.1) {
+  if (abs(newSunAngle - sunAngle) > 0.1 && abs(newSunAngle - sunAngle) < PI) {
     smoothedSunAngle = sunAngle + 0.1 * (newSunAngle - sunAngle);
   }
   return smoothedSunAngle;
