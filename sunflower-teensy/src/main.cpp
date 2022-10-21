@@ -383,6 +383,8 @@ FlightState updateState() {
         return LANDED;
       }
       break;
+    case LANDED:
+      break;
   }  if (altitude > 20000) {
     return STABILIZATION;
   }
@@ -391,7 +393,7 @@ FlightState updateState() {
 
 FlightState nextState(FlightState next_state) {
   static FlightState state_to_change = ASCENT;
-  static int stateChangeTime = 0;
+  unsigned static int stateChangeTime = 0;
   if (currentState == TEST) {
     return TEST;
   }
@@ -492,11 +494,11 @@ void writeTelemetry() {
   Serial1.print(",");
   Serial1.print(rotVec.z);
   Serial1.print(",");
-  Serial1.print(SPSRow);
-  Serial1.print(",");
   if (ledOn) {
-    Serial1.print("-1,-1,-1");
+    Serial1.print("-1,-1,-1,-1");
   } else {
+    Serial1.print(SPSRow);
+    Serial1.print(",");
     Serial1.print(SPS.front.array[SPSRow]);
     Serial1.print(",");
     Serial1.print(SPS.left.array[SPSRow]);
