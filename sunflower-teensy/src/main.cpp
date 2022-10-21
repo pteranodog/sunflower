@@ -158,6 +158,7 @@ float calculateSunAngle();
 void quaternionToEuler();
 void applyControl(float control);
 float calculateThrust();
+int largestPhotoresistor(Eye eye);
 // --------------------------
 
 
@@ -340,9 +341,15 @@ void quaternionToEuler() {
     float sqr = sq(rotVec.real);
     float sqj = sq(rotVec.j);
     float sqk = sq(rotVec.k);
-    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), 1.0 - 2.0 * (sqj + sqk));
+    rotVec.x = atan2(2.0 * (rotVec.i * rotVec.j + rotVec.k * rotVec.real), 1.0 - 2.0 * (sqj + sqk)); 
     rotVec.y = asin(2.0 * (rotVec.i * rotVec.k - rotVec.j * rotVec.real));
     rotVec.z = atan2(2.0 * (rotVec.i * rotVec.real + rotVec.j * rotVec.k), 1.0 - 2.0 * (sqk + sqr));
+    while (rotVec.x < sunAngle - PI) {
+      rotVec.x += 2 * PI;
+    }
+    while (rotVec.x > sunAngle + PI) {
+      rotVec.x -= 2 * PI;
+    }
 }
 
 FlightState updateState() {
@@ -413,7 +420,7 @@ void stabilize() {
   if (cumulativeSolenoidTime > maxSolenoidTime) {
     return;
   }
-  if (rotVec.x < currentDeadzone && rotVec.x > -currentDeadzone && gyro.x < currentDeadspeed && gyro.x > -currentDeadspeed) {
+  if (abs(sunAngle - rotVec.x) < currentDeadzone && abs(gyro.x) < currentDeadspeed) {
     currentDeadzone = stableDeadzone;
     currentDeadspeed = stableDeadspeed;
     applyControl(0);
@@ -423,8 +430,8 @@ void stabilize() {
   currentDeadzone = seekDeadzone;
   currentDeadspeed = seekDeadspeed;
   static float integral = 0;
-  float proportional = rotVec.x * Kp;
-  integral += rotVec.x * Ki;
+  float proportional = (sunAngle - rotVec.x) * Kp;
+  integral += (sunAngle - rotVec.x) * Ki;
   integral *= 0.97;
   float derivative = gyro.z * Kd;
   float control = proportional + integral + derivative;
@@ -497,7 +504,7 @@ void writeTelemetry() {
     Serial1.print(SPS.right.array[SPSRow]);
   }
   Serial1.print(",");
-  // Sun angle TODO
+  Serial1.print(sunAngle);
   Serial1.print(",");
   Serial1.print(pressure);
   Serial1.print(",");
@@ -535,8 +542,42 @@ void updateSPS() {
 }
 
 float calculateSunAngle() {
-  // Calculate sun angle TODO
-  return 0;
+  float newSunAngle;
+  float frontLargest = largestPhotoresistor(SPS.front);
+  float leftLargest = largestPhotoresistor(SPS.left);
+  float rightLargest = largestPhotoresistor(SPS.right);
+  if (leftLargest == 6 && rightLargest == 0) {
+    return 0.0;
+  }
+  if (frontLargest > leftLargest && frontLargest > rightLargest) {
+    newSunAngle = .3285 * frontLargest + 2.2997;
+  } else if (leftLargest > frontLargest && leftLargest > rightLargest) {
+    newSunAngle = .3285 * leftLargest - 2.2997;
+  } else if (rightLargest > frontLargest && rightLargest > leftLargest) {
+    newSunAngle = .3285 * rightLargest;
+  } else {
+    newSunAngle = 0;
+  }
+  while (abs(newSunAngle) > PI) {
+    if (newSunAngle > PI) {
+      newSunAngle -= 2 * PI;
+    } else if (newSunAngle < -PI) {
+      newSunAngle += 2 * PI;
+    }
+  }
+  return newSunAngle;
+}
+
+int largestPhotoresistor(Eye eye) {
+  float largest = 0;
+  int indexOfLargest = 0;
+  for (int i = 0; i < 7; i++) {
+    if (eye.array[i] > largest) {
+      largest = eye.array[i];
+      indexOfLargest = i;
+    }
+  }
+  return indexOfLargest;
 }
 
 void applyControl(float control) {
