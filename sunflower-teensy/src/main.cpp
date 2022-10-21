@@ -298,7 +298,7 @@ void getSensorData() {
   barometer.performReading();
   temp = barometer.temperature;
   pressure = barometer.pressure;
-  altitude = barometer.readAltitude(1013.25);
+  altitude = barometer.readAltitude(groundpressure);
   updateSPS();
   sunAngle = calculateSunAngle();
 }
