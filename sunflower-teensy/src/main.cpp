@@ -82,9 +82,9 @@ const int CAMERA = 11;
 const int BOX_LED = 0;
 const int BOARD_LED = 13;
 // Eye readout pins
-const int EYE_FRONT = 14;
-const int EYE_LEFT = 15;
+const int EYE_FRONT = 17;
 const int EYE_RIGHT = 16;
+const int EYE_LEFT = 15;
 // I2C pins
 const int I2C_SDA = 18;
 const int I2C_SCL = 19;
