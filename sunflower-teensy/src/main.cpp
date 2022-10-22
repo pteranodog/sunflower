@@ -33,7 +33,7 @@ float thresholdLower = 0.1;
 bool solenoidCW = false;
 bool solenoidCCW = false;
 int cumulativeSolenoidTime = 0;
-int maxSolenoidTime = 30 * 1000;
+int maxSolenoidTime = 5 * 60 * 1000;
 float currentThrust = 0;
 // ------------------------
 
@@ -219,6 +219,7 @@ void setup() {
 void loop() {
   checkCamera();
   getSensorData();
+  currentState = nextState(updateState());
   if (currentState == TEST) {
     blinkLED(BOX_LED, 3000);
   } else {
