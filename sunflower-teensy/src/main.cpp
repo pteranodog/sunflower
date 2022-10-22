@@ -374,9 +374,6 @@ FlightState updateState() {
 FlightState nextState(FlightState next_state) {
   static FlightState state_to_change = ASCENT;
   unsigned static int stateChangeTime = 0;
-  if (currentState == TEST) {
-    return TEST;
-  }
   if (currentState == LANDED) {
     return LANDED;
   }
