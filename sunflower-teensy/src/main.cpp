@@ -336,6 +336,9 @@ FlightState updateState() {
         return ASCENT;
       }
     case TEST:
+      if (altitude > 2) {
+        return LAUNCH;
+      }
       break;
     case ASCENT:
       if (altitude > 20000) {
