@@ -258,7 +258,7 @@ void loop() {
 // -- FUNCTION DEFINITIONS --
 
 void checkCamera() {
-  static unsigned int cameraInterval = 0.1 * 60 * 1000;
+  static unsigned int cameraInterval = 5 * 60 * 1000;
   static unsigned int lastChange = 10 * 1000;
   switch (camState) {
     case CAM_ON:
