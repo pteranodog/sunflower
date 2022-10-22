@@ -135,7 +135,6 @@ void quaternionToEuler();
 void applyControl(float control);
 float calculateThrust();
 int largestPhotoresistor(Eye eye);
-float smoothSunAngle(float newSunAngle);
 // --------------------------
 
 
@@ -280,7 +279,7 @@ void getSensorData() {
   pressure = barometer.pressure;
   altitude = barometer.readAltitude(groundpressure);
   updateSPS();
-  sunAngle = smoothSunAngle(calculateSunAngle());
+  sunAngle = calculateSunAngle();
 }
 
 void parseIMUData() {
@@ -546,14 +545,6 @@ float calculateSunAngle() {
     }
   }
   return newSunAngle;
-}
-
-float smoothSunAngle(float newSunAngle) {
-  float smoothedSunAngle = newSunAngle;
-  if (abs(newSunAngle - sunAngle) > 0.1 && abs(newSunAngle - sunAngle) < PI) {
-    smoothedSunAngle = sunAngle + 0.1 * (newSunAngle - sunAngle);
-  }
-  return smoothedSunAngle;
 }
 
 int largestPhotoresistor(Eye eye) {
