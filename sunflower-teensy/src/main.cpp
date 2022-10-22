@@ -11,7 +11,7 @@
 // ------ FLIGHT STATE ------
 // Flight state definitions and initialization
 enum FlightState {TEST, LAUNCH, ASCENT, STABILIZATION, DESCENT, LANDING, LANDED};
-FlightState currentState = TEST;
+FlightState currentState = LAUNCH;
 // --------------------------
 
 enum CamState {CAM_OFF, CAM_ON, CAM_RISING, CAM_FALLING};
@@ -337,7 +337,7 @@ FlightState updateState() {
         return ASCENT;
       }
     case TEST:
-      if (altitude > 2) {
+      if (altitude > .5) {
         return LAUNCH;
       }
       break;
@@ -350,7 +350,7 @@ FlightState updateState() {
       if (altitude < 3000) {
         return LANDING;
       }
-      if (abs(accel.x) < .03 && abs(accel.y) < .03 && abs(accel.z) < .03) {
+      if (abs(accel.x) < .2 && abs(accel.y) < .2 && abs(accel.z) < .2) {
         return DESCENT;
       }
     case DESCENT:
