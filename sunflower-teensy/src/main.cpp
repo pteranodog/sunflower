@@ -136,6 +136,7 @@ void applyControl(float control);
 float calculateThrust();
 int largestPhotoresistor(Eye eye);
 float smoothSunAngle(float newSunAngle);
+FlightState nextState(FlightState next_state);
 // --------------------------
 
 
