@@ -135,6 +135,7 @@ void quaternionToEuler();
 void applyControl(float control);
 float calculateThrust();
 int largestPhotoresistor(Eye eye);
+FlightState nextState(FlightState next_state);
 // --------------------------
 
 
