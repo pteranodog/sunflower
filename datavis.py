@@ -23,8 +23,9 @@ pygame.init()
 time = 0
 fpsClock = pygame.time.Clock()
 auto_forward = False
+velocity = 0
 
-width, height = 640, 480
+width, height = 1280, 720
 center_y, center_x = height / 2, width / 2
 screen = pygame.display.set_mode((width, height))
 BLACK = (0, 0, 0)
@@ -33,14 +34,18 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
-radius_draw_mult = 300
-rect_width = 16
-line_width = 1
-triangle_width = 10
+radius_draw_mult = 301
+rect_width = 40
+line_width = 3
+triangle_width = 15
 triangle_height = 20
 control_force_indicator = 0
 control_force_indicator_multiplier = pi/6
+velocity_indicator_multiplier = pi/3
 font = pygame.font.SysFont(None, 24)
+bigfont = pygame.font.SysFont(None, 48)
+sunflower_image = pygame.image.load("sunflowertop.png")
+rotation_multiplier = - 180 / pi
 
 with open("LOG00199.txt", "r") as flight_data_file:
     reader = csv.reader(flight_data_file, delimiter=",")
@@ -54,6 +59,9 @@ for id_row, row in enumerate(flight_data):
             flight_data[id_row][id_column] = float(flight_data[id_row][id_column])
         except:
             pass
+
+flight_data.pop(-1)
+total_packets = flight_data[-1][2]-1
 
 def getClosestPacket():
     global time
@@ -105,7 +113,7 @@ def frame_skip(frames):
         time = flight_data[packet][1]
 
 def processRow(row):
-    global position, rcs_direction, setpoint, deadzone, altitude, control_force_indicator, packet, state
+    global position, rcs_direction, setpoint, deadzone, altitude, control_force_indicator, packet, state, velocity
     position = row[17]
     rcs_direction = -1 if row[30] == 1 else 1 if row[31] == 1 else 0
     setpoint = row[24]
@@ -114,26 +122,12 @@ def processRow(row):
     control_force_indicator = row[27]
     packet = row[2]
     state = flight_states[row[3]]
+    velocity = row[12]
 
 def drawRCS():
-    rect = [
-        [radius * radius_draw_mult, rect_width / 2],
-        [radius * radius_draw_mult, -rect_width / 2],
-        [-radius * radius_draw_mult, -rect_width / 2],
-        [-radius * radius_draw_mult, rect_width / 2],
-        [-rect_width / 2, rect_width / 2],
-        [-rect_width / 2, rect_width * 1.5],
-        [rect_width / 2, rect_width * 1.5],
-        [rect_width / 2, rect_width / 2]
-    ]
-    for point in rect:
-        x = point[0]
-        y = point[1]
-        point[0] = x * cos(position) - y * sin(position)
-        point[1] = y * cos(position) + x * sin(position)
-        point[0] += center_x
-        point[1] += center_y
-    pygame.draw.lines(screen, WHITE, True, rect, line_width)
+    global time
+    rotated_sunflower = pygame.transform.rotozoom(sunflower_image, position * rotation_multiplier, .273)
+    screen.blit(rotated_sunflower, (center_x - rotated_sunflower.get_width() / 2, center_y - rotated_sunflower.get_height() / 2))
 
     if rcs_direction != 0:
         if rcs_direction > 0:
@@ -175,49 +169,56 @@ def drawRCS():
             point[1] += center_y
         pygame.draw.lines(screen, WHITE, True, triangle_one, line_width)
         pygame.draw.lines(screen, WHITE, True, triangle_two, line_width)
+    pygame.draw.circle(screen, GREEN, (center_x, 2 * height / 12 + 1), line_width * 2, 0)
+    if velocity > 0:
+        pygame.draw.arc(screen, GREEN, pygame.Rect(center_x - 4 * height / 12, 2 * height / 12, 8 * height / 12, 8 * height / 12),
+                    pi/2 - velocity * velocity_indicator_multiplier, pi/2, line_width)
+    else:
+       pygame.draw.arc(screen, GREEN, pygame.Rect(center_x - 4 * height / 12, 2 * height / 12, 8 * height / 12, 8 * height / 12),
+                    pi/2, pi/2 - velocity * velocity_indicator_multiplier, line_width)
+    pygame.draw.circle(screen, WHITE, (center_x, height / 12 + 1), line_width * 2, 0)
     if control_force_indicator != 0:
-        pygame.draw.circle(screen, WHITE, (center_x, height / 12), 4, 0)
         if control_force_indicator > 0:
-            pygame.draw.arc(screen, WHITE, pygame.Rect(center_x - 5 * height/ 12, height / 12, 10 * height / 12, 10 * height / 12),
-                        pi/2, pi/2 + control_force_indicator * control_force_indicator_multiplier, 2)
+            pygame.draw.arc(screen, WHITE, pygame.Rect(center_x - 5 * height / 12, height / 12, 10 * height / 12, 10 * height / 12),
+                        pi/2, pi/2 + control_force_indicator * control_force_indicator_multiplier, line_width)
         else:
             pygame.draw.arc(screen, WHITE, pygame.Rect(center_x - 5 * height/ 12, height / 12, 10 * height / 12, 10 * height / 12),
-                        pi/2 + control_force_indicator * control_force_indicator_multiplier, pi/2, 2)
+                        pi/2 + control_force_indicator * control_force_indicator_multiplier, pi/2, line_width)
     pygame.draw.line(screen, YELLOW,
         (100 * cos(position - pi / 2) + center_x, 100 * sin(position - pi / 2) + center_y),
-        (150 * cos(position - pi / 2) + center_x, 150 * sin(position - pi / 2) + center_y)
-    )
+        (150 * cos(position - pi / 2) + center_x, 150 * sin(position - pi / 2) + center_y),
+        line_width)
     pygame.draw.line(screen, RED,
         (100 * cos(position - pi / 2 - deadzone) + center_x, 100 * sin(position - pi / 2 - deadzone) + center_y),
-        (150 * cos(position - pi / 2 - deadzone) + center_x, 150 * sin(position - pi / 2 - deadzone) + center_y)
-    )
+        (150 * cos(position - pi / 2 - deadzone) + center_x, 150 * sin(position - pi / 2 - deadzone) + center_y),
+        line_width)
     pygame.draw.line(screen, RED,
         (100 * cos(position - pi / 2 + deadzone) + center_x, 100 * sin(position - pi / 2 + deadzone) + center_y),
-        (150 * cos(position - pi / 2 + deadzone) + center_x, 150 * sin(position - pi / 2 + deadzone) + center_y)
-    )
+        (150 * cos(position - pi / 2 + deadzone) + center_x, 150 * sin(position - pi / 2 + deadzone) + center_y),
+        line_width)
     pygame.draw.line(screen, GREEN,
-        (50 * cos(setpoint - pi / 2) + center_x, 50 * sin(setpoint - pi / 2) + center_y),
-        (200 * cos(setpoint - pi / 2) + center_x, 200 * sin(setpoint - pi / 2) + center_y)
-    )
+        (75 * cos(setpoint - pi / 2) + center_x, 75 * sin(setpoint - pi / 2) + center_y),
+        (175 * cos(setpoint - pi / 2) + center_x, 175 * sin(setpoint - pi / 2) + center_y),
+        line_width)
 
-    time_text = font.render(str(round(time/1000,3)), True, WHITE)
-    screen.blit(time_text, (30,30))
+    time_text = bigfont.render("T+0"+str(int(time//3600000))+":"+ ("0"+str(int(time//60000)) if time // 60000 < 10 else str(int(time//60000)))+":"+("0"+str(round((time/1000)%60,3) if time > 10000 else str(round((time/1000)%60,3)))), True, WHITE)
+    screen.blit(time_text, (center_x - 130, height - 45))
     alt_text = font.render(str(round(altitude,1)), True, WHITE)
     screen.blit(alt_text, (30,45))
-    packet_text = font.render(str(int(packet)), True, WHITE)
-    screen.blit(packet_text, (30,15))
-    state_text = font.render(state, True, WHITE)
-    screen.blit(state_text, (30,60))
+    packet_text = bigfont.render("PACKET "+str(int(packet))+"/"+str(int(total_packets)), True, WHITE)
+    screen.blit(packet_text, (15,height - 45))
+    state_text = bigfont.render(state, True, WHITE)
+    screen.blit(state_text, (width - 280, height - 45))
 
 
 while True:
     screen.fill(BLACK)
 
     for event in pygame.event.get():
-        if event.type == QUIT:
+        if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == KEYDOWN:
+        if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 auto_forward = not auto_forward
             elif event.key == pygame.K_PERIOD:
